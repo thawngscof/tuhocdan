@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Học Đọc Khuông Nhạc Trực Quan</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Inter Font -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    /* Piano Keyboard Styles */
+    .keyboard-wrapper {
+      position: relative;
+      display: inline-flex;
+      background: #0f172a;
+      padding: 12px 16px 18px 16px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    }
+    .white-key {
+      width: 44px;
+      height: 160px;
+      background: linear-gradient(to bottom, #ffffff 0%, #f1f5f9 100%);
+      border: 1px solid #cbd5e1;
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 12px;
+      font-weight: 700;
+      color: #334155;
+      box-shadow: inset 0 -6px 8px rgba(0,0,0,0.08);
+      transition: all 0.08s ease;
+      position: relative;
+      z-index: 1;
+    }
+    .white-key:hover {
+      background: linear-gradient(to bottom, #ffffff 0%, #e2e8f0 100%);
+    }
+    .white-key:active, .white-key.active {
+      background: #3b82f6 !important;
+      color: #ffffff !important;
+      box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3);
+      transform: translateY(2px);
+    }
+    .white-key.active .key-sub {
+      color: #dbeafe !important;
+    }
+    .black-key {
+      width: 28px;
+      height: 100px;
+      background: linear-gradient(to bottom, #334155 0%, #0f172a 100%);
+      border-bottom-left-radius: 5px;
+      border-bottom-right-radius: 5px;
+      cursor: pointer;
+      position: absolute;
+      top: 12px;
+      z-index: 10;
+      box-shadow: 2px 4px 8px rgba(0,0,0,0.4);
+      transition: all 0.08s ease;
+      border: 1px solid #1e293b;
+    }
+    .black-key:hover {
+      background: linear-gradient(to bottom, #475569 0%, #1e293b 100%);
+    }
+    .black-key:active, .black-key.active {
+      background: #2563eb !important;
+      transform: translateY(2px);
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <span class="text-3xl">🎼</span>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white leading-tight">Học Đọc Khuông Nhạc Trực Quan</h1>
+          <p class="text-xs text-slate-400">Dành cho người mới bắt đầu &amp; Tự học Organ tại nhà</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex bg-slate-800 p-1 rounded-xl text-sm font-medium">
+        <button id="tab-btn-practice" onclick="switchTab('practice')" class="px-4 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all">
+          🎹 Bàn Phím &amp; Khuông Nhạc
+        </button>
+        <button id="tab-btn-guide" onclick="switchTab('guide')" class="px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all">
+          💡 Mẹo Đọc Nhanh
+        </button>
+        <button id="tab-btn-quiz" onclick="switchTab('quiz')" class="px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all">
+          🎯 Game Phản Xạ
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+
+    <!-- TAB 1: PRACTICE & INTERACTIVE KEYBOARD -->
+    <section id="tab-practice" class="space-y-6">
+      
+      <!-- Top Score Display Card -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
+        <!-- SVG Score Display Container -->
+        <div class="w-full md:w-2/3 flex flex-col items-center">
+          <div class="flex items-center justify-between w-full mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Hiển thị trên Khuông Nhạc</span>
+            
+            <!-- Clef Selector -->
+            <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button id="clef-treble-btn" onclick="setClef('treble')" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-blue-600 shadow-sm">
+                Khóa Sol (Tay Phải)
+              </button>
+              <button id="clef-bass-btn" onclick="setClef('bass')" class="px-3 py-1 text-xs font-bold rounded-md text-slate-600 hover:text-slate-900">
+                Khóa Fa (Tay Trái)
+              </button>
+            </div>
+          </div>
+
+          <!-- SVG Output Canvas -->
+          <div id="svg-score-container" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[160px]">
+            <!-- SVG will be injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Note Info Sidebar -->
+        <div class="w-full md:w-1/3 bg-blue-50/80 border border-blue-100 rounded-xl p-5 flex flex-col justify-between self-stretch">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span id="info-note-badge" class="px-2.5 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">
+                C4
+              </span>
+              <span id="info-clef-label" class="text-xs text-blue-800 font-semibold">Khóa Sol</span>
+            </div>
+            <h3 id="info-note-name" class="text-2xl font-extrabold text-slate-900 mb-1">Đô (C4)</h3>
+            <p id="info-note-desc" class="text-sm text-slate-600 leading-relaxed mb-4">
+              Nằm ở dòng kẻ phụ thứ nhất ngay bên dưới khuông nhạc Khóa Sol. Đây là nốt mốc quan trọng nhất.
+            </p>
+          </div>
+
+          <div class="pt-3 border-t border-blue-100 flex items-center justify-between">
+            <span class="text-xs text-slate-500 font-medium">Bấm phím đàn bên dưới để thử!</span>
+            <button onclick="playCurrentAudio()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 shadow-sm">
+              🔊 Nghe Âm Thanh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Piano Keyboard -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col items-center">
+        <div class="flex flex-col sm:flex-row items-center justify-between w-full mb-4 max-w-4xl gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Bàn Phím Organ / Piano Tương Tác C2 - C6</h2>
+            <p class="text-xs text-slate-500">Nhấp chuột hoặc chạm phím đàn để nghe âm thanh &amp; xem vị trí khuông nhạc</p>
+          </div>
+          <!-- Keyboard Octave Filter Quick Buttons -->
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+            <button onclick="scrollKeyboardTo('C2')" class="px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition-all">
+              🎼 Vùng Khóa Fa (C2-C4)
+            </button>
+            <button onclick="scrollKeyboardTo('C4')" class="px-2.5 py-1 rounded-lg text-blue-600 bg-white shadow-sm transition-all">
+              🎹 Trung Tâm (C3-C5)
+            </button>
+            <button onclick="scrollKeyboardTo('C5')" class="px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition-all">
+              🎼 Vùng Khóa Sol (C4-C6)
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Keyboard Container -->
+        <div id="keyboard-scroll-container" class="w-full overflow-x-auto pb-4 flex justify-start md:justify-center scroll-smooth">
+          <div id="keyboard-element" class="keyboard-wrapper select-none">
+            <!-- Dynamic Keys Generated in JS -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: VISUAL GUIDES -->
+    <section id="tab-guide" class="space-y-6 hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h2 class="text-xl font-bold text-slate-900 mb-2">Phương Pháp Đọc Nhanh Toàn Diện: Khóa Sol &amp; Khóa Fa</h2>
+        <p class="text-sm text-slate-600 mb-6">Nắm vững quy tắc hình ảnh giúp bạn tự tin đọc cả 2 tay trên bản nhạc Organ mà không cần tra cứu từng nốt.</p>
+
+        <!-- Treble Clef Guides -->
+        <h3 class="text-md font-bold text-blue-700 mb-3 flex items-center gap-2">
+          <span>🎼</span> KỸ THUẬT ĐỌC KHÓA SOL (TAY PHẢI)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <!-- Guide 1 -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-emerald-50/50 hover:shadow-md transition-all">
+            <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center mb-3 text-sm">1</div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">Tư Duy Khoảng Cách</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              Nhìn mối liên hệ hướng đi:
+              <br>• <strong>Dòng ➔ Khe:</strong> Đánh ngón liền kề.
+              <br>• <strong>Dòng ➔ Dòng:</strong> Nhảy cách 1 ngón tay.
+            </p>
+            <div id="guide-svg-1" class="bg-white p-2 border border-slate-200 rounded-lg flex justify-center"></div>
+          </div>
+
+          <!-- Guide 2 -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-purple-50/50 hover:shadow-md transition-all">
+            <div class="w-8 h-8 rounded-lg bg-purple-600 text-white font-bold flex items-center justify-center mb-3 text-sm">2</div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">3 Nốt Cột Mốc Khóa Sol</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              Thuộc lòng 3 mốc chính:
+              <br>• <strong>Đô Trung (C4):</strong> Dòng phụ dưới.
+              <br>• <strong>Sol (G4):</strong> Dòng kẻ thứ 2.
+              <br>• <strong>Đô Cao (C5):</strong> Khe thứ 3.
+            </p>
+            <div id="guide-svg-2" class="bg-white p-2 border border-slate-200 rounded-lg flex justify-center"></div>
+          </div>
+
+          <!-- Guide 3 -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-amber-50/50 hover:shadow-md transition-all">
+            <div class="w-8 h-8 rounded-lg bg-amber-600 text-white font-bold flex items-center justify-center mb-3 text-sm">3</div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">Quy Tắc Chữ "F-A-C-E"</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              4 nốt nằm trong 4 KHE Khóa Sol ghép lại thành chữ <strong>F - A - C - E</strong>:
+              <br><strong>Pha (F) - La (A) - Đô (C) - Mi (E)</strong>.
+            </p>
+            <div id="guide-svg-3" class="bg-white p-2 border border-slate-200 rounded-lg flex justify-center"></div>
+          </div>
+        </div>
+
+        <!-- Bass Clef Guides -->
+        <h3 class="text-md font-bold text-indigo-700 mb-3 flex items-center gap-2">
+          <span>𝄢</span> KỸ THUẬT ĐỌC KHÓA FA (TAY TRÁI)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Guide 4 -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-indigo-50/50 hover:shadow-md transition-all">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center mb-3 text-sm">4</div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">3 Nốt Cột Mốc Khóa Fa</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              Ghi nhớ 3 điểm tựa chính:
+              <br>• <strong>Đô Trầm (C3):</strong> Khe thứ 2.
+              <br>• <strong>Pha (F3):</strong> Dòng kẻ thứ 4 (Tâm Khóa Fa).
+              <br>• <strong>Đô Trung (C4):</strong> Dòng phụ trên.
+            </p>
+            <div id="guide-svg-4" class="bg-white p-2 border border-slate-200 rounded-lg flex justify-center"></div>
+          </div>
+
+          <!-- Guide 5 -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-rose-50/50 hover:shadow-md transition-all">
+            <div class="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center mb-3 text-sm">5</div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">Các Nốt Nằm Trong KHE</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              4 KHE của Khóa Fa tương ứng với các nốt:
+              <br><strong>La (A2) - Đô (C3) - Mi (E3) - Sol (G3)</strong>
+              <br><em>(Mẹo nhớ: All Cows Eat Grass)</em>.
+            </p>
+            <div id="guide-svg-5" class="bg-white p-2 border border-slate-200 rounded-lg flex justify-center"></div>
+          </div>
+
+          <!-- Guide 6 -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-teal-50/50 hover:shadow-md transition-all">
+            <div class="w-8 h-8 rounded-lg bg-teal-600 text-white font-bold flex items-center justify-center mb-3 text-sm">6</div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">Các Nốt Nằm Trên DÒNG KẺ</h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              5 DÒNG KẺ Khóa Fa từ dưới lên:
+              <br><strong>Sol (G2) - Si (B2) - Rê (D3) - Pha (F3) - La (A3)</strong>.
+            </p>
+            <div id="guide-svg-6" class="bg-white p-2 border border-slate-200 rounded-lg flex justify-center"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: QUIZ REFLEX GAME -->
+    <section id="tab-quiz" class="space-y-6 hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 max-w-2xl mx-auto text-center">
+        
+        <!-- Quiz Control Filters -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 mb-6">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500">Khóa Nhạc:</span>
+            <select id="quiz-clef-select" onchange="startQuizNextQuestion()" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800">
+              <option value="treble">Khóa Sol (Tay Phải)</option>
+              <option value="bass">Khóa Fa (Tay Trái)</option>
+              <option value="both">Cả Hai Khóa (Ngẫu Nhiên)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500">Độ Khó:</span>
+            <select id="quiz-range-select" onchange="startQuizNextQuestion()" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800">
+              <option value="normal">Cơ Bản (Nốt Trong Khuông)</option>
+              <option value="all">Toàn Bộ (Bao Gồm Dòng Kẻ Phụ)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quiz Header Stats -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+          <div class="text-left">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Điểm Số</span>
+            <span id="quiz-score" class="text-2xl font-black text-blue-600">0</span>
+          </div>
+          <div class="text-center">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Chuỗi Đúng 🔥</span>
+            <span id="quiz-streak" class="text-2xl font-black text-amber-500">0</span>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Đang Câu Hỏi</span>
+            <span id="quiz-clef-label" class="text-sm font-bold text-slate-700">Khóa Sol</span>
+          </div>
+        </div>
+
+        <!-- Question Display Card -->
+        <div class="mb-6">
+          <h3 class="text-base font-bold text-slate-800 mb-3">Đây là nốt gì trên khuông nhạc?</h3>
+          <div id="quiz-svg-container" class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-center items-center shadow-inner min-h-[160px] max-w-md mx-auto">
+            <!-- Quiz SVG goes here -->
+          </div>
+        </div>
+
+        <!-- Quiz Answer Options -->
+        <div id="quiz-options" class="grid grid-cols-2 gap-3 max-w-md mx-auto mb-6">
+          <!-- 4 Option Buttons generated in JS -->
+        </div>
+
+        <!-- Quiz Result Message -->
+        <div id="quiz-feedback" class="p-3 rounded-xl text-sm font-bold hidden transition-all max-w-md mx-auto">
+          <!-- Feedback message -->
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JavaScript Core Engine -->
+  <script>
+    // Comprehensive Notes Database Dictionary
+    const notesData = {
+      treble: [
+        { key: "g/3", step: -5, name: "Sol", noteName: "G3", desc: "Dưới Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol.", freq: 196.00, tag: "ledger" },
+        { key: "a/3", step: -4, name: "La", noteName: "A3", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol.", freq: 220.00, tag: "ledger" },
+        { key: "b/3", step: -3, name: "Si", noteName: "B3", desc: "Dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol.", freq: 246.94, tag: "ledger" },
+        { key: "c/4", step: -2, name: "Đô", noteName: "C4", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol (Đô Trung).", freq: 261.63, tag: "normal" },
+        { key: "d/4", step: -1, name: "Rê", noteName: "D4", desc: "Sát bên dưới Dòng kẻ thứ 1.", freq: 293.66, tag: "normal" },
+        { key: "e/4", step: 0, name: "Mi", noteName: "E4", desc: "Nằm ngay trên Dòng kẻ thứ 1.", freq: 329.63, tag: "normal" },
+        { key: "f/4", step: 1, name: "Pha", noteName: "F4", desc: "Nằm trong Khe thứ 1.", freq: 349.23, tag: "normal" },
+        { key: "g/4", step: 2, name: "Sol", noteName: "G4", desc: "Nằm ngay trên Dòng kẻ thứ 2 (Tâm điểm Khóa Sol).", freq: 392.00, tag: "normal" },
+        { key: "a/4", step: 3, name: "La", noteName: "A4", desc: "Nằm trong Khe thứ 2.", freq: 440.00, tag: "normal" },
+        { key: "b/4", step: 4, name: "Si", noteName: "B4", desc: "Nằm ngay trên Dòng kẻ thứ 3.", freq: 493.88, tag: "normal" },
+        { key: "c/5", step: 5, name: "Đô", noteName: "C5", desc: "Nằm trong Khe thứ 3 (Đô Cao).", freq: 523.25, tag: "normal" },
+        { key: "d/5", step: 6, name: "Rê", noteName: "D5", desc: "Nằm ngay trên Dòng kẻ thứ 4.", freq: 587.33, tag: "normal" },
+        { key: "e/5", step: 7, name: "Mi", noteName: "E5", desc: "Nằm trong Khe thứ 4.", freq: 659.25, tag: "normal" },
+        { key: "f/5", step: 8, name: "Pha", noteName: "F5", desc: "Nằm ngay trên Dòng kẻ thứ 5.", freq: 698.46, tag: "normal" },
+        { key: "g/5", step: 9, name: "Sol", noteName: "G5", desc: "Sát bên trên Dòng kẻ thứ 5.", freq: 783.99, tag: "ledger" },
+        { key: "a/5", step: 10, name: "La", noteName: "A5", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Sol.", freq: 880.00, tag: "ledger" },
+        { key: "b/5", step: 11, name: "Si", noteName: "B5", desc: "Sát bên trên Dòng kẻ phụ thứ 1.", freq: 987.77, tag: "ledger" },
+        { key: "c/6", step: 12, name: "Đô", noteName: "C6", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên trên khuông Khóa Sol.", freq: 1046.50, tag: "ledger" }
+      ],
+      bass: [
+        { key: "c/2", step: -4, name: "Đô", noteName: "C2", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Fa.", freq: 65.41, tag: "ledger" },
+        { key: "d/2", step: -3, name: "Rê", noteName: "D2", desc: "Sát bên dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa.", freq: 73.42, tag: "ledger" },
+        { key: "e/2", step: -2, name: "Mi", noteName: "E2", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa.", freq: 82.41, tag: "ledger" },
+        { key: "f/2", step: -1, name: "Pha", noteName: "F2", desc: "Sát bên dưới Dòng kẻ thứ 1 của Khóa Fa.", freq: 87.31, tag: "normal" },
+        { key: "g/2", step: 0, name: "Sol", noteName: "G2", desc: "Nằm ngay trên Dòng kẻ thứ 1 của Khóa Fa.", freq: 98.00, tag: "normal" },
+        { key: "a/2", step: 1, name: "La", noteName: "A2", desc: "Nằm trong Khe thứ 1 của Khóa Fa.", freq: 110.00, tag: "normal" },
+        { key: "b/2", step: 2, name: "Si", noteName: "B2", desc: "Nằm ngay trên Dòng kẻ thứ 2 của Khóa Fa.", freq: 123.47, tag: "normal" },
+        { key: "c/3", step: 3, name: "Đô", noteName: "C3", desc: "Nằm trong Khe thứ 2 của Khóa Fa.", freq: 130.81, tag: "normal" },
+        { key: "d/3", step: 4, name: "Rê", noteName: "D3", desc: "Nằm ngay trên Dòng kẻ thứ 3 của Khóa Fa.", freq: 146.83, tag: "normal" },
+        { key: "e/3", step: 5, name: "Mi", noteName: "E3", desc: "Nằm trong Khe thứ 3 của Khóa Fa.", freq: 164.81, tag: "normal" },
+        { key: "f/3", step: 6, name: "Pha", noteName: "F3", desc: "Nằm ngay trên Dòng kẻ thứ 4 (Tâm điểm Khóa Fa).", freq: 174.61, tag: "normal" },
+        { key: "g/3", step: 7, name: "Sol", noteName: "G3", desc: "Nằm trong Khe thứ 4 của Khóa Fa.", freq: 196.00, tag: "normal" },
+        { key: "a/3", step: 8, name: "La", noteName: "A3", desc: "Nằm ngay trên Dòng kẻ thứ 5 của Khóa Fa.", freq: 220.00, tag: "normal" },
+        { key: "b/3", step: 9, name: "Si", noteName: "B3", desc: "Sát bên trên Dòng kẻ thứ 5 của Khóa Fa.", freq: 246.94, tag: "normal" },
+        { key: "c/4", step: 10, name: "Đô", noteName: "C4", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Fa (Đô Trung).", freq: 261.63, tag: "ledger" },
+        { key: "d/4", step: 11, name: "Rê", noteName: "D4", desc: "Sát bên trên Dòng kẻ phụ thứ 1 bên trên Khóa Fa.", freq: 293.66, tag: "ledger" },
+        { key: "e/4", step: 12, name: "Mi", noteName: "E4", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên trên khuông Khóa Fa.", freq: 329.63, tag: "ledger" },
+        { key: "f/4", step: 13, name: "Pha", noteName: "F4", desc: "Sát bên trên Dòng kẻ phụ thứ 2 bên trên Khóa Fa.", freq: 349.23, tag: "ledger" }
+      ]
+    };
+
+    // Full Organ Keyboard Layout Data (C2 to C6 - 4 Octaves)
+    const keyboardKeys = [
+      // Octave 2
+      { key: "c/2", name: "Đô", noteName: "C2", type: "white", freq: 65.41 },
+      { key: "c#/2", name: "C#2", noteName: "C#2", type: "black", freq: 69.30, pos: 28 },
+      { key: "d/2", name: "Rê", noteName: "D2", type: "white", freq: 73.42 },
+      { key: "eb/2", name: "D#2", noteName: "Eb2", type: "black", freq: 77.78, pos: 72 },
+      { key: "e/2", name: "Mi", noteName: "E2", type: "white", freq: 82.41 },
+      { key: "f/2", name: "Pha", noteName: "F2", type: "white", freq: 87.31 },
+      { key: "f#/2", name: "F#2", noteName: "F#2", type: "black", freq: 92.50, pos: 160 },
+      { key: "g/2", name: "Sol", noteName: "G2", type: "white", freq: 98.00 },
+      { key: "g#/2", name: "G#2", noteName: "G#2", type: "black", freq: 103.83, pos: 204 },
+      { key: "a/2", name: "La", noteName: "A2", type: "white", freq: 110.00 },
+      { key: "bb/2", name: "A#2", noteName: "Bb2", type: "black", freq: 116.54, pos: 248 },
+      { key: "b/2", name: "Si", noteName: "B2", type: "white", freq: 123.47 },
+      // Octave 3
+      { key: "c/3", name: "Đô", noteName: "C3", type: "white", freq: 130.81 },
+      { key: "c#/3", name: "C#3", noteName: "C#3", type: "black", freq: 138.59, pos: 336 },
+      { key: "d/3", name: "Rê", noteName: "D3", type: "white", freq: 146.83 },
+      { key: "eb/3", name: "D#3", noteName: "Eb3", type: "black", freq: 155.56, pos: 380 },
+      { key: "e/3", name: "Mi", noteName: "E3", type: "white", freq: 164.81 },
+      { key: "f/3", name: "Pha", noteName: "F3", type: "white", freq: 174.61 },
+      { key: "f#/3", name: "F#3", noteName: "F#3", type: "black", freq: 185.00, pos: 468 },
+      { key: "g/3", name: "Sol", noteName: "G3", type: "white", freq: 196.00 },
+      { key: "g#/3", name: "G#3", noteName: "G#3", type: "black", freq: 207.65, pos: 512 },
+      { key: "a/3", name: "La", noteName: "A3", type: "white", freq: 220.00 },
+      { key: "bb/3", name: "A#3", noteName: "Bb3", type: "black", freq: 233.08, pos: 556 },
+      { key: "b/3", name: "Si", noteName: "B3", type: "white", freq: 246.94 },
+      // Octave 4
+      { key: "c/4", name: "Đô", noteName: "C4", type: "white", freq: 261.63 },
+      { key: "c#/4", name: "C#4", noteName: "C#4", type: "black", freq: 277.18, pos: 644 },
+      { key: "d/4", name: "Rê", noteName: "D4", type: "white", freq: 293.66 },
+      { key: "eb/4", name: "D#4", noteName: "Eb4", type: "black", freq: 311.13, pos: 688 },
+      { key: "e/4", name: "Mi", noteName: "E4", type: "white", freq: 329.63 },
+      { key: "f/4", name: "Pha", noteName: "F4", type: "white", freq: 349.23 },
+      { key: "f#/4", name: "F#4", noteName: "F#4", type: "black", freq: 369.99, pos: 776 },
+      { key: "g/4", name: "Sol", noteName: "G4", type: "white", freq: 392.00 },
+      { key: "g#/4", name: "G#4", noteName: "G#4", type: "black", freq: 415.30, pos: 820 },
+      { key: "a/4", name: "La", noteName: "A4", type: "white", freq: 440.00 },
+      { key: "bb/4", name: "A#4", noteName: "Bb4", type: "black", freq: 466.16, pos: 864 },
+      { key: "b/4", name: "Si", noteName: "B4", type: "white", freq: 493.88 },
+      // Octave 5
+      { key: "c/5", name: "Đô", noteName: "C5", type: "white", freq: 523.25 },
+      { key: "c#/5", name: "C#5", noteName: "C#5", type: "black", freq: 554.37, pos: 952 },
+      { key: "d/5", name: "Rê", noteName: "D5", type: "white", freq: 587.33 },
+      { key: "eb/5", name: "D#5", noteName: "Eb5", type: "black", freq: 622.25, pos: 996 },
+      { key: "e/5", name: "Mi", noteName: "E5", type: "white", freq: 659.25 },
+      { key: "f/5", name: "Pha", noteName: "F5", type: "white", freq: 698.46 },
+      { key: "f#/5", name: "F#5", noteName: "F#5", type: "black", freq: 739.99, pos: 1084 },
+      { key: "g/5", name: "Sol", noteName: "G5", type: "white", freq: 783.99 },
+      { key: "g#/5", name: "G#5", noteName: "G#5", type: "black", freq: 830.61, pos: 1128 },
+      { key: "a/5", name: "La", noteName: "A5", type: "white", freq: 880.00 },
+      { key: "bb/5", name: "A#5", noteName: "Bb5", type: "black", freq: 932.33, pos: 1172 },
+      { key: "b/5", name: "Si", noteName: "B5", type: "white", freq: 987.77 },
+      // Octave 6
+      { key: "c/6", name: "Đô", noteName: "C6", type: "white", freq: 1046.50 }
+    ];
+
+    // State Variables
+    let currentClef = 'treble';
+    let currentSelectedNote = notesData.treble[3]; // C4
+    let audioCtx = null;
+    let quizScore = 0;
+    let quizStreak = 0;
+    let quizCurrentQuestion = null;
+
+    // Generalized SVG Pure Renderer Function
+    function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const lineSpacing = 10;
+      const topMargin = 50;
+      const startX = 65;
+      const lineY1 = topMargin + 4 * lineSpacing; // Bottom line (Line 1)
+      
+      let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" class="select-none">`;
+
+      // Draw 5 Staff Lines
+      for (let i = 0; i < 5; i++) {
+        const y = topMargin + i * lineSpacing;
+        svg += `<line x1="15" y1="${y}" x2="${width - 15}" y2="${y}" stroke="#64748b" stroke-width="1.5"/>`;
+      }
+
+      // Draw Start/End vertical barlines
+      svg += `<line x1="15" y1="${topMargin}" x2="15" y2="${lineY1}" stroke="#64748b" stroke-width="2"/>`;
+      svg += `<line x1="${width - 15}" y1="${topMargin}" x2="${width - 15}" y2="${lineY1}" stroke="#64748b" stroke-width="2"/>`;
+
+      // Draw Clef Symbol (Vector SVG for Treble and Bass)
+      if (clef === 'treble') {
+        svg += `<text x="20" y="${topMargin + 32}" font-family="serif, 'Segoe UI Symbol', sans-serif" font-size="40" fill="#0f172a" font-weight="bold">🎼</text>`;
+      } else {
+        svg += `<g transform="translate(22, ${topMargin + 5})">
+                  <path d="M 6 12 C 6 6 13 4 15 10 C 16 13 13 18 8 18 C 3 18 1 13 1 8 C 1 2 9 0 16 3 C 21 6 22 13 20 20 C 17 28 8 33 2 35" fill="none" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round"/>
+                  <circle cx="25" cy="6" r="2.5" fill="#0f172a"/>
+                  <circle cx="25" cy="16" r="2.5" fill="#0f172a"/>
+                </g>`;
+      }
+
+      // Draw Notes with Dynamic Ledger Lines
+      const totalNotes = notesArray.length;
+      const availWidth = width - startX - 35;
+      const noteSpacing = totalNotes > 1 ? availWidth / (totalNotes - 0.5) : availWidth / 2;
+
+      notesArray.forEach((item, idx) => {
+        const noteData = notesData[clef].find(n => n.key === item.key) || { step: 0, name: 'Note' };
+        const step = noteData.step;
+        
+        // Y position relative to Line 1 (lineY1)
+        const noteY = lineY1 - step * (lineSpacing / 2);
+        const noteX = startX + idx * noteSpacing + 20;
+
+        // Dynamic Lower Ledger Lines (step <= -2)
+        if (step <= -2) {
+          for (let lStep = -2; lStep >= step - (Math.abs(step) % 2 === 1 ? 1 : 0); lStep -= 2) {
+            const ledgerY = lineY1 - lStep * (lineSpacing / 2);
+            svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
+          }
+        } 
+        // Dynamic Upper Ledger Lines (step >= 10)
+        else if (step >= 10) {
+          for (let uStep = 10; uStep <= step + (step % 2 === 1 ? 1 : 0); uStep += 2) {
+            const ledgerY = lineY1 - uStep * (lineSpacing / 2);
+            svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
+          }
+        }
+
+        // Draw Accidental (# or b)
+        if (item.acc || noteData.acc) {
+          const accChar = item.acc || noteData.acc;
+          svg += `<text x="${noteX - 16}" y="${noteY + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
+        }
+
+        // Draw Oval Notehead
+        svg += `<g transform="translate(${noteX}, ${noteY}) rotate(-20)">
+                  <ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#0f172a" />
+                </g>`;
+
+        // Draw Stem (Down if step > 4, Up if step <= 4)
+        const stemUp = step <= 4;
+        const stemX = stemUp ? noteX + 5.5 : noteX - 5.5;
+        const stemY2 = stemUp ? noteY - 26 : noteY + 26;
+        svg += `<line x1="${stemX}" y1="${noteY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
+
+        // Draw Annotation Label if provided
+        if (item.label) {
+          svg += `<text x="${noteX}" y="22" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${item.label}</text>`;
+        }
+      });
+
+      svg += `</svg>`;
+      container.innerHTML = svg;
+    }
+
+    // Render Piano Keyboard Elements
+    function buildPianoKeyboard() {
+      const keyboardEl = document.getElementById('keyboard-element');
+      if (!keyboardEl) return;
+
+      let html = '';
+      keyboardKeys.forEach((k) => {
+        if (k.type === 'white') {
+          html += `<div class="white-key" id="key-${k.key.replace('/', '_')}" onclick="handleKeyClick('${k.key}')">
+                    <span class="text-xs font-bold pointer-events-none">${k.name}</span>
+                    <span class="key-sub text-[10px] text-slate-400 font-medium pointer-events-none">${k.noteName}</span>
+                  </div>`;
+        } else {
+          html += `<div class="black-key" id="key-${k.key.replace('/', '_')}" style="left: ${k.pos + 16}px;" onclick="handleKeyClick('${k.key}')"></div>`;
+        }
+      });
+
+      keyboardEl.innerHTML = html;
+    }
+
+    // Scroll keyboard to specific octave position
+    function scrollKeyboardTo(noteNamePrefix) {
+      const targetEl = document.getElementById(`key-${noteNamePrefix.toLowerCase()}_${noteNamePrefix.slice(-1)}`) || 
+                       document.getElementById(`key-${noteNamePrefix.toLowerCase()}`);
+      const container = document.getElementById('keyboard-scroll-container');
+      if (targetEl && container) {
+        container.scrollTo({
+          left: targetEl.offsetLeft - 40,
+          behavior: 'smooth'
+        });
+      }
+    }
+
+    // Web Audio Synthesizer Engine
+    function playTone(freq) {
+      if (!freq) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'triangle'; // Rich organ sound
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1.2);
+      } catch (e) {
+        console.error("Audio Playback Error:", e);
+      }
+    }
+
+    function playCurrentAudio() {
+      if (currentSelectedNote && currentSelectedNote.freq) {
+        playTone(currentSelectedNote.freq);
+      }
+    }
+
+    // Handle Piano Key Clicks
+    function handleKeyClick(key) {
+      let match = notesData[currentClef].find(n => n.key === key);
+      if (!match) {
+        const kData = keyboardKeys.find(k => k.key === key);
+        if (kData) {
+          match = { key: kData.key, step: 0, name: kData.name, noteName: kData.noteName, desc: `Nốt ${kData.name} (${kData.noteName})`, freq: kData.freq };
+        }
+      }
+
+      if (match) {
+        currentSelectedNote = match;
+        updatePracticeDisplay();
+        playTone(match.freq);
+        highlightKey(key);
+      }
+    }
+
+    // Key Highlight Animation
+    function highlightKey(key) {
+      document.querySelectorAll('.white-key, .black-key').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(`key-${key.replace('/', '_')}`);
+      if (activeEl) {
+        activeEl.classList.add('active');
+        setTimeout(() => activeEl.classList.remove('active'), 300);
+      }
+    }
+
+    // Update Practice Section UI
+    function updatePracticeDisplay() {
+      renderScoreSVG('svg-score-container', [{ key: currentSelectedNote.key }], currentClef, 340, 160);
+
+      document.getElementById('info-note-badge').innerText = currentSelectedNote.noteName || 'Nốt';
+      document.getElementById('info-note-name').innerText = `${currentSelectedNote.name} (${currentSelectedNote.noteName || ''})`;
+      document.getElementById('info-note-desc').innerText = currentSelectedNote.desc || 'Thực hành bấm phím đàn để nghe âm thanh.';
+      document.getElementById('info-clef-label').innerText = currentClef === 'treble' ? 'Khóa Sol (Tay Phải)' : 'Khóa Fa (Tay Trái)';
+    }
+
+    // Switch Clef
+    function setClef(clef) {
+      currentClef = clef;
+      currentSelectedNote = clef === 'treble' ? notesData.treble[3] : notesData.bass[7]; // C4 or C3
+      
+      const trebleBtn = document.getElementById('clef-treble-btn');
+      const bassBtn = document.getElementById('clef-bass-btn');
+
+      if (clef === 'treble') {
+        trebleBtn.className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-blue-600 shadow-sm";
+        bassBtn.className = "px-3 py-1 text-xs font-bold rounded-md text-slate-600 hover:text-slate-900";
+        scrollKeyboardTo('C4');
+      } else {
+        bassBtn.className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-blue-600 shadow-sm";
+        trebleBtn.className = "px-3 py-1 text-xs font-bold rounded-md text-slate-600 hover:text-slate-900";
+        scrollKeyboardTo('C3');
+      }
+
+      updatePracticeDisplay();
+    }
+
+    // Render Visual Guides (Tab 2)
+    function renderGuideDiagrams() {
+      // Guide 1: Step vs Skip (Treble)
+      renderScoreSVG('guide-svg-1', [
+        { key: "c/4", label: "Gốc" },
+        { key: "d/4", label: "Liền kề" },
+        { key: "f/4", label: "Nhảy cách" }
+      ], 'treble', 260, 130);
+
+      // Guide 2: Anchor Notes (Treble)
+      renderScoreSVG('guide-svg-2', [
+        { key: "c/4", label: "C4 (Đô)" },
+        { key: "g/4", label: "G4 (Sol)" },
+        { key: "c/5", label: "C5 (Đô)" }
+      ], 'treble', 260, 130);
+
+      // Guide 3: F-A-C-E Rule (Treble)
+      renderScoreSVG('guide-svg-3', [
+        { key: "f/4", label: "F" },
+        { key: "a/4", label: "A" },
+        { key: "c/5", label: "C" },
+        { key: "e/5", label: "E" }
+      ], 'treble', 260, 130);
+
+      // Guide 4: Anchor Notes (Bass)
+      renderScoreSVG('guide-svg-4', [
+        { key: "c/3", label: "C3 (Đô)" },
+        { key: "f/3", label: "F3 (Pha)" },
+        { key: "c/4", label: "C4 (Đô)" }
+      ], 'bass', 260, 130);
+
+      // Guide 5: Space Notes (Bass: A2-C3-E3-G3)
+      renderScoreSVG('guide-svg-5', [
+        { key: "a/2", label: "A" },
+        { key: "c/3", label: "C" },
+        { key: "e/3", label: "E" },
+        { key: "g/3", label: "G" }
+      ], 'bass', 260, 130);
+
+      // Guide 6: Line Notes (Bass: G2-B2-D3-F3-A3)
+      renderScoreSVG('guide-svg-6', [
+        { key: "g/2", label: "G" },
+        { key: "b/2", label: "B" },
+        { key: "d/3", label: "D" },
+        { key: "f/3", label: "F" }
+      ], 'bass', 260, 130);
+    }
+
+    // Quiz Engine Functions
+    function startQuizNextQuestion() {
+      const clefSelect = document.getElementById('quiz-clef-select').value;
+      const rangeSelect = document.getElementById('quiz-range-select').value;
+
+      let activeClef = currentClef;
+      if (clefSelect === 'both') {
+        activeClef = Math.random() > 0.5 ? 'treble' : 'bass';
+      } else {
+        activeClef = clefSelect;
+      }
+
+      let pool = notesData[activeClef];
+      if (rangeSelect === 'normal') {
+        pool = pool.filter(n => n.tag === 'normal');
+      }
+
+      const randomNote = pool[Math.floor(Math.random() * pool.length)];
+      quizCurrentQuestion = { ...randomNote, clef: activeClef };
+
+      // Update Quiz Clef Label
+      document.getElementById('quiz-clef-label').innerText = activeClef === 'treble' ? 'Khóa Sol' : 'Khóa Fa';
+
+      // Render Question Score
+      renderScoreSVG('quiz-svg-container', [{ key: randomNote.key }], activeClef, 280, 150);
+
+      // Create 4 Choices
+      let options = [randomNote];
+      const fullList = notesData[activeClef];
+      while (options.length < 4) {
+        const randOpt = fullList[Math.floor(Math.random() * fullList.length)];
+        if (!options.some(o => o.key === randOpt.key)) {
+          options.push(randOpt);
+        }
+      }
+      // Shuffle options
+      options.sort(() => Math.random() - 0.5);
+
+      const optionsEl = document.getElementById('quiz-options');
+      optionsEl.innerHTML = '';
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "px-4 py-3 bg-slate-100 hover:bg-blue-50 hover:border-blue-300 border border-slate-200 rounded-xl font-bold text-slate-800 transition-all text-sm shadow-sm active:scale-95";
+        btn.innerText = `${opt.name} (${opt.noteName})`;
+        btn.onclick = () => checkQuizAnswer(opt);
+        optionsEl.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "p-3 rounded-xl text-sm font-bold hidden transition-all max-w-md mx-auto";
+    }
+
+    function checkQuizAnswer(selectedOption) {
+      const feedbackEl = document.getElementById('quiz-feedback');
+      feedbackEl.classList.remove('hidden');
+
+      if (selectedOption.key === quizCurrentQuestion.key) {
+        // Correct
+        quizScore += 10;
+        quizStreak += 1;
+        playTone(quizCurrentQuestion.freq);
+
+        feedbackEl.className = "p-3 rounded-xl text-sm font-bold max-w-md mx-auto bg-emerald-100 text-emerald-800 border border-emerald-200 block";
+        feedbackEl.innerText = ` Chính xác! Đáp án đúng là ${quizCurrentQuestion.name} (${quizCurrentQuestion.noteName}).`;
+
+        setTimeout(startQuizNextQuestion, 1200);
+      } else {
+        // Incorrect
+        quizStreak = 0;
+        feedbackEl.className = "p-3 rounded-xl text-sm font-bold max-w-md mx-auto bg-rose-100 text-rose-800 border border-rose-200 block";
+        feedbackEl.innerText = ` Chưa đúng! Đây là nốt ${quizCurrentQuestion.name} (${quizCurrentQuestion.noteName}). Thử lại nhé!`;
+      }
+
+      document.getElementById('quiz-score').innerText = quizScore;
+      document.getElementById('quiz-streak').innerText = quizStreak;
+    }
+
+    // Tab Navigation Switcher
+    function switchTab(tab) {
+      document.getElementById('tab-practice').classList.add('hidden');
+      document.getElementById('tab-guide').classList.add('hidden');
+      document.getElementById('tab-quiz').classList.add('hidden');
+
+      document.getElementById('tab-btn-practice').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
+      document.getElementById('tab-btn-guide').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
+      document.getElementById('tab-btn-quiz').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
+
+      if (tab === 'practice') {
+        document.getElementById('tab-practice').classList.remove('hidden');
+        document.getElementById('tab-btn-practice').className = "px-4 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all";
+        updatePracticeDisplay();
+      } else if (tab === 'guide') {
+        document.getElementById('tab-guide').classList.remove('hidden');
+        document.getElementById('tab-btn-guide').className = "px-4 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all";
+        renderGuideDiagrams();
+      } else if (tab === 'quiz') {
+        document.getElementById('tab-quiz').classList.remove('hidden');
+        document.getElementById('tab-btn-quiz').className = "px-4 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all";
+        startQuizNextQuestion();
+      }
+    }
+
+    // Window Onload Initialization
+    window.onload = function() {
+      buildPianoKeyboard();
+      updatePracticeDisplay();
+      setTimeout(() => scrollKeyboardTo('C4'), 200);
+    };
+  </script>
+</body>
+</html>
