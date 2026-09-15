@@ -378,6 +378,23 @@
         </div>
       </div>
 
+      <!-- Intervals -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="mb-4">
+          <h2 class="text-lg font-bold text-slate-900">Quãng</h2>
+          <p class="text-sm text-slate-500">Khoảng cách giữa hai nốt. Đếm cả nốt đầu lẫn nốt cuối: Đô lên Mi là quãng 3 vì Đô–Rê–Mi là ba tên nốt.</p>
+        </div>
+
+        <div id="interval-buttons" class="flex flex-wrap gap-2 mb-4">
+          <!-- Interval buttons generated in JS -->
+        </div>
+
+        <div id="interval-score" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[180px] mb-2">
+          <!-- SVG injected in JS -->
+        </div>
+        <p id="interval-caption" class="text-sm font-semibold text-slate-600 text-center">Chọn một quãng ở trên</p>
+      </div>
+
       <!-- C major scale -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -2109,6 +2126,95 @@
       }
     }
 
+    /* ---- Intervals --------------------------------------------------------
+     * An interval has two parts and they are counted differently. The NUMBER
+     * counts letter names inclusively - C up to E is a third because C, D, E
+     * is three letters - and takes no notice of sharps. The QUALITY comes from
+     * the semitones. Deriving both from the note names keeps the two honest
+     * about each other.
+     */
+    const LETTER_ORDER = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+    const SEMITONE_OF = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+
+    function parseKey(key) {
+      const m = /^([a-g])(#?)\/(\d)$/.exec(String(key));
+      if (!m) return null;
+      return { letter: m[1], sharp: Boolean(m[2]), octave: Number(m[3]) };
+    }
+
+    const diatonicIndex = (p) => LETTER_ORDER.indexOf(p.letter) + 7 * p.octave;
+    const semitoneIndex = (p) => SEMITONE_OF[p.letter] + (p.sharp ? 1 : 0) + 12 * p.octave;
+
+    // number -> the semitone counts that number can have, and what each is called
+    const INTERVAL_QUALITY = {
+      2: { 1: 'thứ', 2: 'trưởng', 3: 'tăng' },
+      3: { 2: 'giảm', 3: 'thứ', 4: 'trưởng', 5: 'tăng' },
+      4: { 4: 'giảm', 5: 'đúng', 6: 'tăng' },
+      5: { 6: 'giảm', 7: 'đúng', 8: 'tăng' },
+      6: { 7: 'giảm', 8: 'thứ', 9: 'trưởng', 10: 'tăng' },
+      7: { 9: 'giảm', 10: 'thứ', 11: 'trưởng', 12: 'tăng' },
+      8: { 11: 'giảm', 12: 'đúng', 13: 'tăng' },
+    };
+
+    function intervalBetween(lowKey, highKey) {
+      const a = parseKey(lowKey), b = parseKey(highKey);
+      if (!a || !b) {
+        console.error(`intervalBetween: "${lowKey}" and "${highKey}" are not both keys on this keyboard.`);
+        return null;
+      }
+      // Measure from the lower note whichever way round they were given.
+      const [lo, hi] = semitoneIndex(a) <= semitoneIndex(b) ? [a, b] : [b, a];
+
+      const number = diatonicIndex(hi) - diatonicIndex(lo) + 1;
+      const semitones = semitoneIndex(hi) - semitoneIndex(lo);
+
+      if (number === 1) return { number: 1, semitones, quality: null, name: 'Cùng một nốt', unison: true };
+      if (number > 8) {
+        return { number, semitones, quality: null, name: `Quãng ${number} (rộng hơn một quãng tám)`, wide: true };
+      }
+      const quality = (INTERVAL_QUALITY[number] || {})[semitones] || null;
+      return {
+        number, semitones, quality,
+        name: quality ? `Quãng ${number} ${quality}` : `Quãng ${number} (${semitones} nửa cung)`,
+      };
+    }
+
+    const INTERVAL_ROOT = 'c/4';
+    const INTERVAL_STEPS = [
+      { number: 2, key: 'd/4' }, { number: 3, key: 'e/4' }, { number: 4, key: 'f/4' },
+      { number: 5, key: 'g/4' }, { number: 6, key: 'a/4' }, { number: 7, key: 'b/4' },
+      { number: 8, key: 'c/5' },
+    ];
+
+    function showInterval(highKey) {
+      const interval = intervalBetween(INTERVAL_ROOT, highKey);
+      if (!interval) return false;
+
+      renderScoreSVG('interval-score', [{ keys: [INTERVAL_ROOT, highKey], dur: 'h' }], 'treble', 340, 180);
+
+      const caption = document.getElementById('interval-caption');
+      if (caption) caption.innerText = `${interval.name} — ${interval.semitones} nửa cung`;
+
+      document.querySelectorAll('.white-key, .black-key').forEach(el => el.classList.remove('active'));
+      for (const key of [INTERVAL_ROOT, highKey]) {
+        const el = document.getElementById(`key-${key.replace('/', '_')}`);
+        if (el) el.classList.add('active');
+      }
+
+      // Both notes together, then one after the other, is how an interval is
+      // usually shown: the blend first, then the distance.
+      const ctx = ensureAudio();
+      const low = notesData.treble.find(n => n.key === INTERVAL_ROOT);
+      const high = notesData.treble.find(n => n.key === highKey);
+      if (low && high) {
+        playTone(low.freq, { at: ctx.currentTime + 0.05, hold: 1.1, voice: 'interval-low' });
+        playTone(high.freq, { at: ctx.currentTime + 0.05, hold: 1.1, voice: 'interval-high' });
+        playTone(low.freq, { at: ctx.currentTime + 1.4, hold: 0.5, voice: 'interval-low-2' });
+        playTone(high.freq, { at: ctx.currentTime + 2.0, hold: 0.7, voice: 'interval-high-2' });
+      }
+      return true;
+    }
+
     /* ---- Songs to play ----------------------------------------------------
      * Public domain only, as the backlog requires, and only melodies whose
      * notes I could set down with confidence - a song encoded from a hazy
@@ -2375,6 +2481,14 @@
       playSequence(DEMO_PHRASE, { clef: 'treble', loop: Boolean(loopBox && loopBox.checked) });
     }
 
+    function buildIntervalButtons() {
+      const row = document.getElementById('interval-buttons');
+      if (!row) return;
+      row.innerHTML = INTERVAL_STEPS.map(step =>
+        `<button onclick="showInterval('${step.key}')" class="chord-btn">Quãng ${step.number}</button>`
+      ).join('');
+    }
+
     function buildBeatLights() {
       const row = document.getElementById('metronome-beats');
       if (!row) return;
@@ -2619,6 +2733,7 @@
     window.onload = function() {
       buildPianoKeyboard();
       buildBeatLights();
+      buildIntervalButtons();
       lessonProgress = loadProgress();
       renderLessonList();
       renderLessonDetail();

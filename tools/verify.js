@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -2569,6 +2569,137 @@ const untiedPlay = scenario(() => playSequence(untied, { clef: 'treble', bpm: 12
 check('without the tie the same pitch is struck twice',
       untiedPlay.nodes.filter(n => n.kind === 'oscillator').length === 3);
 stopSequence();
+
+/* ---- 25. intervals ------------------------------------------------------
+ * The two halves of an interval are counted differently, and that is where
+ * the mistakes live. The number counts letter names and ignores sharps
+ * entirely; the quality comes from the semitones. Both are derived here from
+ * the note names, independently of the page's own tables.
+ */
+
+const LETTERS_ASC = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+const letterDistance = (a, b) => {
+  const pa = /^([a-g])#?\/(\d)$/.exec(a), pb = /^([a-g])#?\/(\d)$/.exec(b);
+  return (LETTERS_ASC.indexOf(pb[1]) + 7 * +pb[2]) - (LETTERS_ASC.indexOf(pa[1]) + 7 * +pa[2]);
+};
+
+/* 25a. the number counts letter names, inclusively */
+
+const wrongNumber = [], wrongSemitones = [];
+for (const low of notesData.treble.slice(0, 30)) {
+  for (const high of notesData.treble.slice(0, 30)) {
+    if (absolutePitch(high.key) < absolutePitch(low.key)) continue;
+    const got = intervalBetween(low.key, high.key);
+    if (!got) { wrongNumber.push(`${low.key}-${high.key}: refused`); continue; }
+    const wantNumber = letterDistance(low.key, high.key) + 1;
+    const wantSemitones = absolutePitch(high.key) - absolutePitch(low.key);
+    if (got.number !== wantNumber) wrongNumber.push(`${low.key}-${high.key}: ${got.number}, want ${wantNumber}`);
+    if (got.semitones !== wantSemitones) wrongSemitones.push(`${low.key}-${high.key}: ${got.semitones}, want ${wantSemitones}`);
+  }
+}
+check('the interval number counts letter names inclusively', wrongNumber.length === 0,
+      wrongNumber.slice(0, 3).join('; '));
+check('the interval size in semitones matches the pitches', wrongSemitones.length === 0,
+      wrongSemitones.slice(0, 3).join('; '));
+
+/* 25b. the seven intervals up from C, by name */
+
+const FROM_C = [
+  ['d/4', 2, 2, 'trưởng'], ['e/4', 3, 4, 'trưởng'], ['f/4', 4, 5, 'đúng'],
+  ['g/4', 5, 7, 'đúng'], ['a/4', 6, 9, 'trưởng'], ['b/4', 7, 11, 'trưởng'],
+  ['c/5', 8, 12, 'đúng'],
+];
+for (const [key, number, semitones, quality] of FROM_C) {
+  const got = intervalBetween('c/4', key);
+  check(`c/4 up to ${key} is a ${quality} ${number}${number === 8 ? 've' : 'th'} (${semitones} semitones)`,
+        got.number === number && got.semitones === semitones && got.quality === quality,
+        `got ${got.name}, ${got.semitones} semitones`);
+}
+
+/* 25c. a sharp changes the quality but never the number */
+
+// The number follows the letters, so C up to D# is a second, not a third -
+// three semitones or not. Spelling it E flat would make it a third, and flats
+// are T14.
+const augSecond = intervalBetween('c/4', 'd#/4');
+check('C up to D sharp is an augmented second, not a minor third',
+      augSecond.number === 2 && augSecond.quality === 'tăng' && augSecond.semitones === 3,
+      augSecond.name);
+
+// Sharpening the bottom note keeps the letters, so the number holds and only
+// the quality moves.
+const majorThird = intervalBetween('c/4', 'e/4');
+const minorThird = intervalBetween('c#/4', 'e/4');
+check('sharpening the lower note leaves the number alone',
+      minorThird.number === 3 && majorThird.number === 3,
+      `${minorThird.name} vs ${majorThird.name}`);
+check('but turns the major third into a minor one',
+      majorThird.quality === 'trưởng' && minorThird.quality === 'thứ',
+      `${majorThird.quality} then ${minorThird.quality}`);
+check('a sharpened fourth is called augmented, not a fifth',
+      intervalBetween('c/4', 'f#/4').number === 4 && intervalBetween('c/4', 'f#/4').quality === 'tăng',
+      intervalBetween('c/4', 'f#/4').name);
+check('the same six semitones spelled as a fifth is called diminished',
+      intervalBetween('c#/4', 'g/4').number === 5 && intervalBetween('c#/4', 'g/4').quality === 'giảm',
+      intervalBetween('c#/4', 'g/4').name);
+
+/* 25d. order, unison and anything wider than an octave */
+
+check('the two notes may be given either way round',
+      intervalBetween('g/4', 'c/4').name === intervalBetween('c/4', 'g/4').name,
+      `${intervalBetween('g/4', 'c/4').name} vs ${intervalBetween('c/4', 'g/4').name}`);
+check('a note against itself is not called an interval',
+      intervalBetween('c/4', 'c/4').unison === true && intervalBetween('c/4', 'c/4').number === 1);
+check('anything wider than an octave says so rather than being named wrongly',
+      intervalBetween('c/4', 'd/5').wide === true && intervalBetween('c/4', 'd/5').number === 9,
+      intervalBetween('c/4', 'd/5').name);
+
+for (const [a, b] of [['zz/9', 'c/4'], ['c/4', 'zz/9'], ['c4', 'd4'], ['', 'c/4']]) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const got = intervalBetween(a, b);
+  console.error = realErr;
+  check(`intervalBetween("${a}", "${b}") is refused`, got === null && logged === 1);
+}
+
+/* 25e. every interval the page offers is a real one, and reaches the keyboard */
+
+check('the page offers the seven intervals from a second to an octave',
+      INTERVAL_STEPS.length === 7 && INTERVAL_STEPS.every((s, i) => s.number === i + 2),
+      INTERVAL_STEPS.map(s => s.number).join(', '));
+check('every interval button names the interval it actually shows',
+      INTERVAL_STEPS.every(s => intervalBetween(INTERVAL_ROOT, s.key).number === s.number),
+      INTERVAL_STEPS.filter(s => intervalBetween(INTERVAL_ROOT, s.key).number !== s.number)
+                    .map(s => `${s.key} is not a ${s.number}`).join(', '));
+check('every interval note is on the keyboard and in the treble clef',
+      [INTERVAL_ROOT, ...INTERVAL_STEPS.map(s => s.key)].every(
+        k => keyboardKeys.some(kk => kk.key === k) && notesData.treble.some(n => n.key === k)));
+
+/* 25f. showing an interval draws both notes and sounds them */
+
+audio.ctx.currentTime = 6000;
+const shown = scenario(() => showInterval('g/4'));
+check('showing an interval raises no error', shown.errors === 0 && shown.result === true);
+check('an interval is drawn as two noteheads on one stem',
+      countHollowHeads(rendered['interval-score']) === 2
+        && countStems(rendered['interval-score']) === 1,
+      `${countHollowHeads(rendered['interval-score'])} notehead(s), ${countStems(rendered['interval-score'])} stem(s)`);
+
+const intervalOsc = shown.nodes.filter(n => n.kind === 'oscillator');
+check('an interval is sounded together and then one note after the other',
+      intervalOsc.length === 4, `${intervalOsc.length} note(s), want 2 together then 2 apart`);
+const starts = intervalOsc.map(o => o.started[0]);
+check('the first two sound together', Math.abs(starts[0] - starts[1]) < 1e-9);
+check('the last two sound one after the other', starts[3] > starts[2] && starts[2] > starts[1]);
+
+let intervalLogged = 0;
+const realIntervalErr = console.error;
+console.error = () => intervalLogged++;
+const badInterval = showInterval('zz/9');
+console.error = realIntervalErr;
+check('showing an interval to a key that does not exist is refused',
+      badInterval === false && intervalLogged === 1);
 
 /* ---- summary ----------------------------------------------------------- */
 

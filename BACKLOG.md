@@ -198,8 +198,16 @@ Thêm 87 phép kiểm tra, kiểm chứng bằng 19 phép phá — bắt đượ
 ### T12 · Luyện tai
 Nghe nốt / quãng rồi chọn đáp án. Tận dụng lại engine game sẵn có.
 
-### T13 · Quãng
-Quãng 2 đến quãng 8, nhận biết trên khuông và trên phím.
+### T13 · Quãng — ✅ XONG
+Một quãng có hai phần và hai phần đó **đếm theo hai cách khác nhau** — đó chính là chỗ sinh ra lỗi:
+- **Số quãng** đếm tên nốt, tính cả hai đầu, và **không đếm xỉa gì tới dấu thăng**. Đô lên Mi là quãng 3 vì Đô–Rê–Mi là ba tên nốt.
+- **Tính chất** (trưởng / thứ / đúng / tăng / giảm) suy từ số nửa cung.
+
+Cả hai đều suy từ tên nốt, nên chúng buộc phải khớp với nhau. Hệ quả có thật: **Đô lên Rê♯ là quãng 2 tăng, không phải quãng 3 thứ** — tôi viết test sai chỗ này và test đã bắt lại; ghi thành Mi♭ thì mới là quãng 3, mà dấu giáng thuộc T14.
+
+Vẽ bằng `item.keys` của T8 (hai đầu nốt một cột, một đuôi chung). Phát hai nốt cùng lúc rồi lần lượt — hoà trước, khoảng cách sau. Đưa cho hai nốt ngược thứ tự cũng ra cùng kết quả; cùng một nốt thì nói rõ là không phải quãng; rộng quá quãng tám thì nói rộng quá, chứ không đặt bừa một cái tên.
+
+Thêm 34 phép kiểm tra, kiểm chứng bằng 14 phép phá — bắt được cả 14. Phép kiểm tra đối chiếu bằng **khoảng cách tên nốt tự tính trong test**, không đọc bảng của trang.
 
 ### T14 · Dấu giáng và hóa biểu
 Dữ liệu hiện chỉ có nốt thăng (`acc: "♯"`). Thêm cách ghi giáng và hóa biểu đầu khuông.
@@ -235,7 +243,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 133KB / 2633 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 138KB / 2748 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -249,7 +257,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **486 phép kiểm tra**, kiểm chứng bằng **191 phép phá có chủ đích** trên 12 bộ.
+Tổng cộng: **520 phép kiểm tra**, kiểm chứng bằng **205 phép phá có chủ đích** trên 13 bộ.
 
 ## Việc chưa kiểm chứng
 
