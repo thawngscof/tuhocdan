@@ -141,9 +141,8 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 
 ## Nợ kỹ thuật
 
-### T18 · Sửa email tác giả commit đầu
-`4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán về profile.
-Cần `git commit --amend --reset-author` + force-push.
+### T18 · ~~Sửa email tác giả commit đầu~~ — KHÔNG LÀM
+`4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
 `index.html` đang 58KB / 918 dòng và sẽ phình nhanh khi thêm bài học.
