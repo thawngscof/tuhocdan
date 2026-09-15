@@ -239,7 +239,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **411 phép kiểm tra**, kiểm chứng bằng **170 phép phá có chủ đích** trên 11 bộ.
+Tổng cộng: **365 phép kiểm tra**, kiểm chứng bằng **153 phép phá có chủ đích** trên 10 bộ.
 
 ## Việc chưa kiểm chứng
 
