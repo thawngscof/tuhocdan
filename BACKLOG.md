@@ -25,7 +25,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Dấu lặng | ✅ T2 |
 | Số chỉ nhịp, vạch nhịp, ô nhịp | ✅ T3 |
 | Tiết tấu, máy gõ nhịp | ✅ T5 + T6 |
-| Hợp âm tay trái | chưa có — thiếu sót lớn nhất với organ |
+| Hợp âm tay trái | ✅ T8 |
 | Gam, ngón bấm | số ngón ✅ T4, gam chưa có |
 | Bài hát tập chơi | chưa có |
 | Lộ trình bài học có thứ tự | chưa có |
@@ -137,10 +137,18 @@ Thêm 27 phép kiểm tra, dựng một `AudioContext` giả ghi lại mọi l�
 
 ## Giai đoạn 3 — Nội dung giảng dạy
 
-### T8 · Hợp âm tay trái
-C, Dm, Em, F, G, G7, Am — thế gốc và thế đảo cơ bản.
-- Sáng nhiều phím cùng lúc, hiện tên hợp âm trên khuông, phát kiểu chặn và kiểu rải
-- Vòng hợp âm phổ biến: C–G–Am–F, C–Am–F–G
+### T8 · Hợp âm tay trái — ✅ XONG
+Bảy hợp âm viết ở quãng tám 3 (vùng tay trái trên bàn phím này), **chỉ viết thế gốc**; thế đảo suy ra bằng cách nâng nốt thấp nhất lên một quãng tám — một chỗ duy nhất để nốt sai có thể ẩn, thay vì ba.
+
+**Renderer phải mổ để vẽ chồng nốt.** Thêm `item.keys` (mảng) bên cạnh `item.key`: nhiều đầu nốt cùng một cột, **một** đuôi chung, dòng kẻ phụ dùng chung (vẽ hai lần sẽ dày lên), dấu hoá xếp lùi dần sang trái, và hai nốt cách nhau một bậc thì nốt trên **né sang phía kia của đuôi** — trường hợp này có thật ở thế đảo của G7.
+
+Hướng đuôi do **cả chồng nốt** quyết định, không phải nốt thấp nhất. Chiều dài đuôi bằng bề rộng chồng nốt cộng 26.
+
+Chụp ảnh **1486 lượt vẽ** của bản đã commit rồi so lại sau khi mổ: **không đổi một byte**. Đó là cách duy nhất tôi tin được rằng T1–T4 còn nguyên.
+
+Phát kiểu chặn (cùng lúc) và kiểu rải (cách nhau một móc đơn theo tốc độ đang đặt). Hai vòng hợp âm C–G–Am–F và C–Am–F–G, mỗi hợp âm một ô nhịp.
+
+Thêm 43 phép kiểm tra, kiểm chứng bằng 23 phép phá — bắt được cả 23. Hợp âm đối chiếu bằng **quãng suy từ chính tên hợp âm** (đuôi `m` là thứ, đuôi `7` là bảy át, còn lại là trưởng), không so với danh sách nốt đang nuôi trang — so dữ liệu với chính nó thì nốt bậc ba sai vẫn qua. Hai phép lúc đầu lọt lưới, cả hai về đuôi nốt: phép kiểm tra hướng đuôi dùng hợp âm không phân biệt được hai quy tắc (đã đổi sang Dm), và phép kiểm tra độ dài đuôi chỉ đòi "vượt qua đầu kia" nên một đuôi cụt 6px vẫn lọt.
 - **Phụ thuộc:** T7
 
 ### T9 · Gam Đô trưởng & ngón bấm
@@ -194,7 +202,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 87KB / 1656 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 97KB / 1880 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -208,7 +216,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **226 phép kiểm tra**, kiểm chứng bằng **98 phép phá có chủ đích** trên 7 bộ.
+Tổng cộng: **269 phép kiểm tra**, kiểm chứng bằng **121 phép phá có chủ đích** trên 8 bộ.
 
 ## Việc chưa kiểm chứng
 

@@ -86,6 +86,25 @@
       transform: translateY(2px);
       box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
     }
+    .chord-btn {
+      min-width: 56px;
+      padding: 0.5rem 0.9rem;
+      border-radius: 0.5rem;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      font-weight: 800;
+      color: #1e293b;
+      transition: all 0.08s ease;
+    }
+    .chord-btn:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .chord-btn:active {
+      transform: translateY(1px);
+      background: #dbeafe;
+    }
     .beat-dot {
       width: 14px;
       height: 14px;
@@ -321,6 +340,57 @@
             <input id="player-loop" type="checkbox" onchange="player.loop = this.checked" class="accent-blue-600 w-4 h-4">
             Lặp lại câu
           </label>
+        </div>
+      </div>
+
+      <!-- Left-hand chords -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="mb-4">
+          <h2 class="text-lg font-bold text-slate-900">Hợp Âm Tay Trái</h2>
+          <p class="text-sm text-slate-500">Bảy hợp âm đủ để đệm hầu hết bài trong giọng Đô trưởng. Bấm để nghe và xem trên khuông khóa Fa.</p>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="pickChord('C')"  class="chord-btn">C</button>
+          <button onclick="pickChord('Dm')" class="chord-btn">Dm</button>
+          <button onclick="pickChord('Em')" class="chord-btn">Em</button>
+          <button onclick="pickChord('F')"  class="chord-btn">F</button>
+          <button onclick="pickChord('G')"  class="chord-btn">G</button>
+          <button onclick="pickChord('G7')" class="chord-btn">G7</button>
+          <button onclick="pickChord('Am')" class="chord-btn">Am</button>
+        </div>
+
+        <div id="chord-score" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[170px] mb-2">
+          <!-- SVG injected in JS -->
+        </div>
+        <p id="chord-caption" class="text-sm font-semibold text-slate-600 text-center mb-5">Chọn một hợp âm ở trên</p>
+
+        <div class="flex flex-col sm:flex-row gap-5 sm:items-end">
+          <div class="sm:w-48">
+            <label for="chord-inversion" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Thế bấm</label>
+            <select id="chord-inversion" onchange="setChordInversion(Number(this.value))"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 bg-white">
+              <option value="0" selected>Thế gốc</option>
+              <option value="1">Thế đảo 1</option>
+              <option value="2">Thế đảo 2</option>
+            </select>
+          </div>
+
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 sm:pb-2">
+            <input id="chord-broken" type="checkbox" onchange="chordBroken = this.checked" class="accent-blue-600 w-4 h-4">
+            Rải từng nốt
+          </label>
+
+          <div class="flex flex-wrap gap-2 sm:ml-auto sm:pb-1">
+            <button onclick="playProgression(0)"
+                    class="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-bold hover:bg-slate-900 transition-all">
+              Vòng C – G – Am – F
+            </button>
+            <button onclick="playProgression(1)"
+                    class="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-bold hover:bg-slate-900 transition-all">
+              Vòng C – Am – F – G
+            </button>
+          </div>
         </div>
       </div>
 
@@ -841,38 +911,62 @@
           return;
         }
 
-        const noteData = notesData[clef].find(n => n.key === item.key);
-        if (!noteData) {
-          // Never guess a position: a wrong notehead teaches the wrong thing.
-          console.error(`renderScoreSVG: no "${clef}" entry for key "${item.key}" - skipped.`);
-          return;
-        }
-        const step = noteData.step;
-        
-        // Y position relative to Line 1 (lineY1)
-        const noteY = lineY1 - step * (lineSpacing / 2);
-
-        // Dynamic Lower Ledger Lines (step <= -2)
-        if (step <= -2) {
-          for (let lStep = -2; lStep >= step; lStep -= 2) {
-            const ledgerY = lineY1 - lStep * (lineSpacing / 2);
-            seen(ledgerY);
-            svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
+        // A chord is a stack of noteheads sharing one slot and one stem, so
+        // everything below works on a list even when there is only one note in
+        // it. `item.keys` gives the stack; `item.key` stays the single-note way.
+        const stackKeys = Array.isArray(item.keys) ? item.keys : [item.key];
+        const stack = [];
+        for (const stackKey of stackKeys) {
+          const found = notesData[clef].find(n => n.key === stackKey);
+          if (!found) {
+            // Never guess a position: a wrong notehead teaches the wrong thing.
+            console.error(`renderScoreSVG: no "${clef}" entry for key "${stackKey}" - skipped.`);
+            continue;
           }
-        } 
-        // Dynamic Upper Ledger Lines (step >= 10)
-        else if (step >= 10) {
-          for (let uStep = 10; uStep <= step; uStep += 2) {
-            const ledgerY = lineY1 - uStep * (lineSpacing / 2);
-            seen(ledgerY);
-            svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
-          }
+          stack.push(found);
+        }
+        if (stack.length === 0) return;
+        stack.sort((a, b) => a.step - b.step);
+
+        const steps = stack.map(n => n.step);
+        const lowStep = steps[0], highStep = steps[steps.length - 1];
+        const yOfStep = (s) => lineY1 - s * (lineSpacing / 2);
+        const noteY = yOfStep(highStep);      // top of the stack, for the finger row
+
+        // The stack as a whole decides the stem direction. For one note this is
+        // the old rule, `step <= 4`, unchanged.
+        const stemUp = (lowStep + highStep) / 2 <= 4;
+
+        // Two notes a second apart cannot share a column, so the upper one of
+        // each pair moves to the far side of the stem.
+        const shifted = [];
+        for (let i = 0; i < steps.length; i++) {
+          shifted.push(i > 0 && steps[i] - steps[i - 1] === 1 && !shifted[i - 1]);
         }
 
-        // Draw Accidental (# or b)
-        if (item.acc || noteData.acc) {
-          const accChar = item.acc || noteData.acc;
-          svg += `<text x="${noteX - 16}" y="${noteY + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
+        // Ledger lines belong to the stack, not to each note: two notes below
+        // the staff cross the same lines, and drawing them twice thickens them.
+        const ledgerSteps = [];
+        for (const s of steps) {
+          if (s <= -2) {
+            for (let l = -2; l >= s; l -= 2) if (!ledgerSteps.includes(l)) ledgerSteps.push(l);
+          } else if (s >= 10) {
+            for (let u = 10; u <= s; u += 2) if (!ledgerSteps.includes(u)) ledgerSteps.push(u);
+          }
+        }
+        for (const l of ledgerSteps) {
+          const ledgerY = yOfStep(l);
+          seen(ledgerY);
+          svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
+        }
+
+        // Accidentals stack leftwards, top note first, so they do not collide.
+        let accSlot = 0;
+        for (let i = stack.length - 1; i >= 0; i--) {
+          const accChar = (stack.length === 1 ? item.acc : null) || stack[i].acc;
+          if (!accChar) continue;
+          svg += `<text x="${noteX - 16 - accSlot * 11}" y="${yOfStep(steps[i]) + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
+          accSlot++;
         }
 
         // Duration drives the notehead shape, the stem and any flags.
@@ -885,26 +979,31 @@
 
         // Draw Notehead: hollow for whole/half, filled for quarter/eighth.
         // The whole note is wider and sits upright; the rest lean like handwriting.
-        seen(noteY);
-        if (shape.hollow && !shape.stem) {
-          svg += `<ellipse cx="${noteX}" cy="${noteY}" rx="7" ry="4.8" fill="none" stroke="#0f172a" stroke-width="1.8"/>`;
-        } else {
-          const fill = shape.hollow
-            ? `fill="none" stroke="#0f172a" stroke-width="1.6"`
-            : `fill="#0f172a"`;
-          svg += `<g transform="translate(${noteX}, ${noteY}) rotate(-20)">
+        for (let i = 0; i < stack.length; i++) {
+          const headY = yOfStep(steps[i]);
+          const headX = shifted[i] ? noteX + (stemUp ? 11 : -11) : noteX;
+          seen(headY);
+          if (shape.hollow && !shape.stem) {
+            svg += `<ellipse cx="${headX}" cy="${headY}" rx="7" ry="4.8" fill="none" stroke="#0f172a" stroke-width="1.8"/>`;
+          } else {
+            const fill = shape.hollow
+              ? `fill="none" stroke="#0f172a" stroke-width="1.6"`
+              : `fill="#0f172a"`;
+            svg += `<g transform="translate(${headX}, ${headY}) rotate(-20)">
                     <ellipse cx="0" cy="0" rx="6" ry="4.5" ${fill} />
                   </g>`;
+          }
         }
 
-        // Draw Stem (down if the note sits high on the staff, up if low)
-        const stemUp = step <= 4;
+        // Draw Stem (down if the note sits high on the staff, up if low). It
+        // runs from the notehead at one end of the stack to past the other.
         if (shape.stem) {
           const dir = stemUp ? -1 : 1;              // -1 draws upward on screen
           const stemX = noteX + (stemUp ? 5.5 : -5.5);
-          const stemY2 = noteY + dir * 26;
+          const anchorY = stemUp ? yOfStep(lowStep) : yOfStep(highStep);
+          const stemY2 = (stemUp ? yOfStep(highStep) : yOfStep(lowStep)) + dir * 26;
           seen(stemY2);
-          svg += `<line x1="${stemX}" y1="${noteY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
+          svg += `<line x1="${stemX}" y1="${anchorY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
 
           // Draw flags. A flag hangs from the stem tip and sweeps back toward
           // the notehead - so it runs opposite the stem, never past the tip.
@@ -1383,6 +1482,131 @@
     function setPlayerButtons() {
       const btn = document.getElementById('player-toggle');
       if (btn) btn.innerText = player.playing ? 'Tạm dừng' : 'Phát';
+    }
+
+    /* ---- Left-hand chords -------------------------------------------------
+     * The seven chords a beginner needs to accompany anything in C major.
+     * Written in octave 3, where the left hand sits on this keyboard, and in
+     * root position - inversions are derived rather than written out, so there
+     * is one place a wrong note could hide instead of three.
+     */
+    const CHORDS = {
+      C:  { label: 'Đô trưởng',  notes: ['c/3', 'e/3', 'g/3'] },
+      Dm: { label: 'Rê thứ',     notes: ['d/3', 'f/3', 'a/3'] },
+      Em: { label: 'Mi thứ',     notes: ['e/3', 'g/3', 'b/3'] },
+      F:  { label: 'Fa trưởng',  notes: ['f/3', 'a/3', 'c/4'] },
+      G:  { label: 'Sol trưởng', notes: ['g/3', 'b/3', 'd/4'] },
+      G7: { label: 'Sol bảy',    notes: ['g/3', 'b/3', 'd/4', 'f/4'] },
+      Am: { label: 'La thứ',     notes: ['a/3', 'c/4', 'e/4'] },
+    };
+
+    let chordInversion = 0;      // which of the three basic positions to play
+    let chordBroken = false;     // block chord, or spread out like an arpeggio
+
+    const PROGRESSIONS = [
+      { name: 'C – G – Am – F', chords: ['C', 'G', 'Am', 'F'] },
+      { name: 'C – Am – F – G', chords: ['C', 'Am', 'F', 'G'] },
+    ];
+
+    function raiseOctave(key) {
+      const cut = key.lastIndexOf('/');
+      return `${key.slice(0, cut)}/${Number(key.slice(cut + 1)) + 1}`;
+    }
+
+    // Inversion 0 is root position; each one after that lifts the lowest note
+    // up an octave. Returns null rather than a plausible-looking wrong chord.
+    function chordVoicing(chordId, inversion = 0) {
+      const chord = CHORDS[chordId];
+      if (!chord) {
+        console.error(`chordVoicing: no chord called "${chordId}".`);
+        return null;
+      }
+      if (!Number.isInteger(inversion) || inversion < 0 || inversion >= chord.notes.length) {
+        console.error(`chordVoicing: ${chordId} has no inversion ${inversion} - it has ${chord.notes.length} notes.`);
+        return null;
+      }
+      const notes = chord.notes.slice();
+      for (let i = 0; i < inversion; i++) {
+        const raised = raiseOctave(notes.shift());
+        if (!keyboardKeys.some(k => k.key === raised)) {
+          console.error(`chordVoicing: ${chordId} inversion ${inversion} needs "${raised}", which is off the keyboard.`);
+          return null;
+        }
+        notes.push(raised);
+      }
+      return notes;
+    }
+
+    // Block: every note together. Broken: spread out like a left-hand arpeggio.
+    function playChord(chordId, opts = {}) {
+      const notes = chordVoicing(chordId, opts.inversion === undefined ? 0 : opts.inversion);
+      if (!notes) return false;
+
+      const ctx = ensureAudio();
+      const at = ctx.currentTime + 0.05;
+      const spread = opts.broken ? 60 / player.bpm / 2 : 0;   // an eighth note apart
+
+      notes.forEach((key, i) => {
+        const note = notesData.bass.find(n => n.key === key);
+        if (!note) {
+          console.error(`playChord: no bass entry for "${key}" - skipped.`);
+          return;
+        }
+        playTone(note.freq, { at: at + i * spread, hold: 1.4 - i * spread, voice: `chord-${key}` });
+      });
+
+      showChordOnStaff(chordId, notes);
+      lightChordKeys(notes);
+      return true;
+    }
+
+    function showChordOnStaff(chordId, notes) {
+      renderScoreSVG('chord-score', [{ keys: notes, dur: 'w', label: chordId }], 'bass', 360, 170);
+      const caption = document.getElementById('chord-caption');
+      if (caption) caption.innerText = `${chordId} — ${CHORDS[chordId].label}`;
+    }
+
+    function lightChordKeys(notes) {
+      document.querySelectorAll('.white-key, .black-key').forEach(el => el.classList.remove('active'));
+      for (const key of notes) {
+        const el = document.getElementById(`key-${key.replace('/', '_')}`);
+        if (el) el.classList.add('active');
+      }
+    }
+
+    function setChordInversion(inversion) {
+      if (!Number.isInteger(inversion) || inversion < 0 || inversion > 2) {
+        console.error(`setChordInversion: ${inversion} is not one of the three basic positions.`);
+        return false;
+      }
+      chordInversion = inversion;
+      return true;
+    }
+
+    function pickChord(chordId) {
+      playChord(chordId, { inversion: chordInversion, broken: chordBroken });
+    }
+
+    // Walk a progression, one chord to the bar, using the playback tempo.
+    function playProgression(index) {
+      const progression = PROGRESSIONS[index];
+      if (!progression) {
+        console.error(`playProgression: there is no progression ${index}.`);
+        return false;
+      }
+      const ctx = ensureAudio();
+      const secPerBar = (60 / player.bpm) * 4;
+      progression.chords.forEach((chordId, i) => {
+        const notes = chordVoicing(chordId, 0);
+        if (!notes) return;
+        for (const key of notes) {
+          const note = notesData.bass.find(n => n.key === key);
+          if (note) playTone(note.freq, { at: ctx.currentTime + 0.05 + i * secPerBar, hold: secPerBar * 0.9, voice: `prog-${i}-${key}` });
+        }
+      });
+      const caption = document.getElementById('chord-caption');
+      if (caption) caption.innerText = `Vòng hợp âm ${progression.name}`;
+      return true;
     }
 
     // A plain reading exercise, not a tune: two bars of 4/4 that between them

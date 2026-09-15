@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -1654,6 +1654,285 @@ check('a passage that is not looping stops at the end',
 
 check('playback leaves no wake-up timer behind', intervalsOpen === 0,
       `${intervalsOpen} interval(s) still running`);
+
+/* ---- 20. left-hand chords -----------------------------------------------
+ * The chords are checked against intervals derived from the chord's NAME,
+ * not against the note list that feeds the page. Comparing the data to
+ * itself would pass just as happily with a wrong third in it.
+ */
+
+const PITCH_CLASS = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const pitchOf = (key) => {
+  const m = /^([a-g])(#?)\/(\d)$/.exec(key);
+  if (!m) return null;
+  return { pc: (PITCH_CLASS[m[1]] + (m[2] ? 1 : 0)) % 12, octave: Number(m[3]) };
+};
+const absolutePitch = (key) => { const p = pitchOf(key); return p.pc + 12 * p.octave; };
+
+// A chord's name says what it is: trailing m is minor, trailing 7 is a
+// dominant seventh, anything else is major.
+const QUALITY = { major: [0, 4, 7], minor: [0, 3, 7], seventh: [0, 4, 7, 10] };
+function expectedChord(chordId) {
+  const m = /^([A-G]#?)(m|7)?$/.exec(chordId);
+  const rootPc = PITCH_CLASS[m[1][0].toLowerCase()] + (m[1].includes('#') ? 1 : 0);
+  const quality = m[2] === 'm' ? 'minor' : m[2] === '7' ? 'seventh' : 'major';
+  return { rootPc: rootPc % 12, want: QUALITY[quality].map(i => (rootPc + i) % 12).sort((a, b) => a - b) };
+}
+
+/* 20a. every chord is the chord its name claims */
+
+const wrongChords = [];
+for (const chordId of Object.keys(CHORDS)) {
+  const notes = CHORDS[chordId].notes;
+  const got = [...new Set(notes.map(k => pitchOf(k).pc))].sort((a, b) => a - b);
+  const { rootPc, want } = expectedChord(chordId);
+  if (JSON.stringify(got) !== JSON.stringify(want)) {
+    wrongChords.push(`${chordId}: notes ${notes.join(' ')} give pitches ${got.join(',')}, theory says ${want.join(',')}`);
+  }
+  if (pitchOf(notes[0]).pc !== rootPc) {
+    wrongChords.push(`${chordId}: root position should start on the root, starts on ${notes[0]}`);
+  }
+}
+check(`every chord matches the intervals its name implies (${Object.keys(CHORDS).length} chords)`,
+      wrongChords.length === 0, wrongChords.join('\n        '));
+
+const offKeyboard = [];
+for (const [chordId, chord] of Object.entries(CHORDS)) {
+  for (const key of chord.notes) {
+    if (!keyboardKeys.some(k => k.key === key)) offKeyboard.push(`${chordId}: ${key}`);
+    if (!notesData.bass.some(n => n.key === key)) offKeyboard.push(`${chordId}: ${key} has no bass-clef position`);
+  }
+}
+check('every chord note is a key the bass clef can show', offKeyboard.length === 0, offKeyboard.join(', '));
+
+const unnamedChords = Object.entries(CHORDS).filter(([, c]) => !c.label || !/[à-ỹ]/i.test(c.label + 'a'));
+check('every chord has a Vietnamese name', unnamedChords.length === 0,
+      unnamedChords.map(([id]) => id).join(', '));
+
+/* 20b. an inversion reorders a chord without changing it */
+
+const badInversions = [];
+for (const chordId of Object.keys(CHORDS)) {
+  const root = chordVoicing(chordId, 0);
+  for (let inv = 1; inv < CHORDS[chordId].notes.length; inv++) {
+    const voicing = chordVoicing(chordId, inv);
+    if (!voicing) { badInversions.push(`${chordId} inversion ${inv}: refused`); continue; }
+
+    const rootSet = [...new Set(root.map(k => pitchOf(k).pc))].sort((a, b) => a - b);
+    const invSet = [...new Set(voicing.map(k => pitchOf(k).pc))].sort((a, b) => a - b);
+    if (JSON.stringify(rootSet) !== JSON.stringify(invSet)) {
+      badInversions.push(`${chordId} inversion ${inv}: ${voicing.join(' ')} is a different chord`);
+    }
+    if (pitchOf(voicing[0]).pc !== pitchOf(root[inv]).pc) {
+      badInversions.push(`${chordId} inversion ${inv}: bass note is ${voicing[0]}, want the pitch of ${root[inv]}`);
+    }
+    const rising = voicing.every((k, i) => i === 0 || absolutePitch(k) > absolutePitch(voicing[i - 1]));
+    if (!rising) badInversions.push(`${chordId} inversion ${inv}: ${voicing.join(' ')} is not in rising order`);
+    if (voicing.length !== root.length) badInversions.push(`${chordId} inversion ${inv}: lost or gained a note`);
+  }
+}
+check('an inversion reorders a chord without changing which chord it is',
+      badInversions.length === 0, badInversions.join('\n        '));
+
+check('root position is the chord as written',
+      JSON.stringify(chordVoicing('C', 0)) === JSON.stringify(CHORDS.C.notes));
+check('an omitted inversion means root position',
+      JSON.stringify(chordVoicing('C')) === JSON.stringify(chordVoicing('C', 0)));
+
+for (const [chordId, inv] of [['C', 3], ['C', -1], ['C', 1.5], ['G7', 4], ['H', 0], ['', 0]]) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const got = chordVoicing(chordId, inv);
+  console.error = realErr;
+  check(`chordVoicing("${chordId}", ${inv}) is refused`, got === null && logged === 1,
+        `returned ${JSON.stringify(got)}, logged ${logged}x`);
+}
+
+check('raising a note by an octave keeps its pitch class',
+      pitchOf(raiseOctave('c#/3')).pc === pitchOf('c#/3').pc
+        && pitchOf(raiseOctave('c#/3')).octave === 4);
+
+/* 20c. a chord draws as one stack on one stem */
+
+const chordSvg = (keys, dur) => {
+  renderScoreSVG('probe', [{ keys, dur: dur || 'q' }], 'bass', 360, 170);
+  return rendered.probe;
+};
+
+const cMajor = chordSvg(CHORDS.C.notes);
+check('a three-note chord draws three noteheads',
+      countFilledHeads(cMajor) === 3, `${countFilledHeads(cMajor)} notehead(s)`);
+check('a chord draws one stem, not one per note',
+      countStems(cMajor) === 1, `${countStems(cMajor)} stem(s)`);
+
+const headXs = [...cMajor.matchAll(/translate\(([-\d.]+), ([-\d.]+)\) rotate/g)].map(m => ({ x: +m[1], y: +m[2] }));
+check('the noteheads of a chord share one column',
+      new Set(headXs.map(h => h.x)).size === 1,
+      `noteheads at x ${headXs.map(h => h.x).join(', ')}`);
+check('the noteheads of a chord are stacked at different heights',
+      new Set(headXs.map(h => h.y)).size === 3,
+      `noteheads at y ${headXs.map(h => h.y).join(', ')}`);
+
+const stemLine = /<line x1="([-\d.]+)" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#0f172a"/.exec(cMajor);
+const ys = headXs.map(h => h.y);
+// Either direction is correct; which one depends on where the stack sits.
+// An up stem is anchored at the lowest notehead and runs past the highest, a
+// down stem the other way about.
+const stemAnchor = +stemLine[2], stemTip = +stemLine[3];
+const stackTop = Math.min(...ys), stackBottom = Math.max(...ys);
+check('the stem reaches from one end of the stack past the other',
+      (Math.abs(stemAnchor - stackBottom) < 0.01 && stemTip < stackTop)
+        || (Math.abs(stemAnchor - stackTop) < 0.01 && stemTip > stackBottom),
+      `stem runs ${stemAnchor} to ${stemTip}, heads span ${stackTop}-${stackBottom}`);
+
+// The stack as a whole picks the direction, so a chord sitting high gets a
+// down stem and one sitting low gets an up stem.
+const stemDirOf = (keys) => {
+  const svg = chordSvg(keys);
+  const m = /<line x1="[-\d.]+" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#0f172a"/.exec(svg);
+  return +m[2] < +m[1] ? 'up' : 'down';
+};
+check('a chord high on the staff hangs its stem downwards',
+      stemDirOf(['e/3', 'g/3', 'b/3']) === 'down');
+check('a chord low on the staff points its stem upwards',
+      stemDirOf(['c/2', 'e/2', 'g/2']) === 'up');
+
+// Dm in root position spans steps 4 to 8: its lowest note is on the up-stem
+// side of the middle line while the stack as a whole sits above it. That is
+// what tells "look at the whole stack" apart from "look at the bottom note".
+check('stem direction follows the whole stack, not just its lowest note',
+      stemDirOf(CHORDS.Dm.notes) === 'down',
+      'as a stack Dm sits above the middle line; only its bottom note is below');
+
+// 26 is the stem length a single note gets, mirrored from the renderer. A
+// stem that merely passes the far notehead by a few pixels looks broken, and
+// "somewhere beyond the far end" was loose enough to accept exactly that.
+check('the stem clears the far end of the stack by a full stem length',
+      Math.abs(Math.abs(stemTip - stemAnchor) - ((stackBottom - stackTop) + 26)) < 0.01,
+      `stem is ${Math.abs(stemTip - stemAnchor)} long for a stack spanning ${stackBottom - stackTop}, want ${(stackBottom - stackTop) + 26}`);
+
+/* 20d. one note given as a stack is still just a note */
+
+const asStack = [];
+for (const note of notesData.bass) {
+  renderScoreSVG('probe', [{ key: note.key }], 'bass', 360, 170);
+  const single = rendered.probe;
+  renderScoreSVG('probe', [{ keys: [note.key] }], 'bass', 360, 170);
+  if (rendered.probe !== single) asStack.push(note.noteName);
+}
+check('a one-note stack renders exactly like a plain note', asStack.length === 0,
+      'differs for: ' + asStack.slice(0, 5).join(', '));
+
+/* 20e. two notes a second apart step aside instead of overlapping */
+
+const seconds = chordSvg(chordVoicing('G7', 1));    // ends f/4, g/4 - a second
+const secondXs = [...seconds.matchAll(/translate\(([-\d.]+), [-\d.]+\) rotate/g)].map(m => +m[1]);
+check('a second in a chord shifts one notehead off the column',
+      new Set(secondXs).size === 2,
+      `all four noteheads sit at x ${[...new Set(secondXs)].join(', ')} - two of them overlap`);
+check('only the one note of the pair steps aside',
+      secondXs.filter(x => x === secondXs[0]).length === 3,
+      `${secondXs.filter(x => x === secondXs[0]).length} notehead(s) left in the column, want 3`);
+
+/* 20f. ledger lines belong to the stack, not to each note */
+
+const lowChord = chordSvg(['c/2', 'e/2', 'g/2']);
+const ledgerYs = [...lowChord.matchAll(/<line x1="[-\d.]+" y1="([-\d.]+)"[^>]*stroke="#334155"/g)].map(m => m[1]);
+check('a chord below the staff draws each ledger line once',
+      ledgerYs.length === new Set(ledgerYs).size,
+      `ledger lines at ${ledgerYs.join(', ')} - some are drawn twice`);
+
+/* 20g. a chord in the stack that the clef cannot show */
+
+let missingLogged = 0;
+let chordErr = console.error;
+console.error = () => missingLogged++;
+renderScoreSVG('probe', [{ keys: ['c/3', 'zz/9', 'g/3'] }], 'bass', 360, 170);
+console.error = chordErr;
+check('a note the clef cannot show is reported and the rest of the chord still draws',
+      missingLogged === 1 && countFilledHeads(rendered.probe) === 2,
+      `logged ${missingLogged}x, drew ${countFilledHeads(rendered.probe)} notehead(s)`);
+
+/* 20h. playing a chord */
+
+audio.ctx.currentTime = 2000;
+const block = scenario(() => playChord('C'));
+check('playing a chord raises no error', block.errors === 0 && block.result === true);
+const blockOsc = block.nodes.filter(n => n.kind === 'oscillator');
+check('a block chord sounds every note', blockOsc.length === 3, `${blockOsc.length} note(s)`);
+check('a block chord sounds its notes together',
+      new Set(blockOsc.map(o => o.started[0])).size === 1,
+      `starts at ${blockOsc.map(o => o.started[0]).join(', ')}`);
+check('every note of a chord goes through the limiter',
+      block.nodes.filter(n => n.kind === 'gain').every(g => g.out.includes(limiter)));
+
+audio.ctx.currentTime = 2100;
+const broken = scenario(() => playChord('C', { broken: true }));
+const brokenOsc = broken.nodes.filter(n => n.kind === 'oscillator');
+check('a broken chord spreads its notes out in time',
+      new Set(brokenOsc.map(o => o.started[0])).size === 3
+        && brokenOsc.every((o, i) => i === 0 || o.started[0] > brokenOsc[i - 1].started[0]),
+      `starts at ${brokenOsc.map(o => o.started[0]).join(', ')}`);
+
+audio.ctx.currentTime = 2200;
+const seventh = scenario(() => playChord('G7', { inversion: 2 }));
+check('an inverted seventh chord sounds all four notes',
+      seventh.nodes.filter(n => n.kind === 'oscillator').length === 4);
+
+let badChordLogged = 0;
+chordErr = console.error;
+console.error = () => badChordLogged++;
+const refusedChord = playChord('Bdim');
+console.error = chordErr;
+check('playing a chord that does not exist is refused',
+      refusedChord === false && badChordLogged === 1);
+
+/* 20i. the three basic positions are the only ones offered */
+
+check('the three basic positions are accepted', [0, 1, 2].every(i => setChordInversion(i) === true));
+for (const bad of [3, -1, 1.5, '1']) {
+  let logged = 0;
+  chordErr = console.error;
+  console.error = () => logged++;
+  const took = setChordInversion(bad);
+  console.error = chordErr;
+  check(`inversion ${typeof bad === 'string' ? `"${bad}"` : bad} is refused`, took === false && logged === 1);
+}
+setChordInversion(0);
+
+/* 20j. progressions */
+
+const badProgressions = [];
+for (const progression of PROGRESSIONS) {
+  if (progression.chords.length !== 4) badProgressions.push(`${progression.name}: ${progression.chords.length} chords`);
+  for (const id of progression.chords) if (!CHORDS[id]) badProgressions.push(`${progression.name}: no chord "${id}"`);
+  const named = progression.name.split('–').map(s => s.trim());
+  if (JSON.stringify(named) !== JSON.stringify(progression.chords)) {
+    badProgressions.push(`${progression.name}: the name does not match ${progression.chords.join(' ')}`);
+  }
+}
+check('every progression is four real chords, named after what it plays',
+      badProgressions.length === 0, badProgressions.join('\n        '));
+
+audio.ctx.currentTime = 2300;
+setPlaybackBpm(120);
+const prog = scenario(() => playProgression(0));
+const progOsc = prog.nodes.filter(n => n.kind === 'oscillator');
+check('a progression sounds every note of every chord',
+      progOsc.length === PROGRESSIONS[0].chords.reduce((n, id) => n + CHORDS[id].notes.length, 0),
+      `${progOsc.length} note(s)`);
+const chordStarts = [...new Set(progOsc.map(o => o.started[0]))].sort((a, b) => a - b);
+check('a progression puts one chord to the bar',
+      chordStarts.length === 4 && chordStarts.every((t, i) => i === 0 || Math.abs((t - chordStarts[i - 1]) - 2) < 1e-9),
+      `chords start at ${chordStarts.join(', ')} - at 120 BPM a bar of 4 is 2s`);
+
+let badProgLogged = 0;
+chordErr = console.error;
+console.error = () => badProgLogged++;
+const refusedProg = playProgression(9);
+console.error = chordErr;
+check('a progression that does not exist is refused', refusedProg === false && badProgLogged === 1);
 
 /* ---- summary ----------------------------------------------------------- */
 
