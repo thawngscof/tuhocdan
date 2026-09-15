@@ -72,31 +72,103 @@ for (const clef of CLEFS) {
   );
 }
 
-/* ---- vertical extent of everything an SVG actually draws ---------------
- * Scraping y1?="..." was not enough: it misses y2 (stem tips) entirely and
- * <path> flags carry no y attribute at all, so clipped stems and flags went
- * unnoticed. This walks every y-bearing attribute AND the path data.
- */
-
-function verticalExtent(svg) {
+/* Y coordinates touched by one SVG path's "d", honouring absolute and
+ * relative M/L/H/V/C commands. Control points bound a cubic, so pushing them
+ * is a safe over-estimate of where the curve actually goes. An unrecognised
+ * command aborts rather than misreading the numbers that follow it. */
+function pathYs(d) {
   const ys = [];
-  for (const m of svg.matchAll(/\b(?:y|y1|y2|cy)="([-\d.]+)"/g)) ys.push(parseFloat(m[1]));
+  const tokens = d.match(/[a-zA-Z]|-?[\d.]+/g) || [];
+  let i = 0, cmd = null, x = 0, y = 0;
+  const num = () => parseFloat(tokens[i++]);
 
-  // path data: "M x y" then relative cubics "c dx1 dy1, dx2 dy2, dx dy".
-  // Control points bound the curve, so tracking them is a safe over-estimate.
-  for (const path of svg.matchAll(/<path d="([^"]+)"/g)) {
-    const nums = path[1].match(/-?[\d.]+/g);
-    if (!nums || nums.length < 2) continue;
-    let y = parseFloat(nums[1]);
-    ys.push(y);
-    for (let i = 2; i + 5 < nums.length; i += 6) {
-      const dy1 = parseFloat(nums[i + 1]);
-      const dy2 = parseFloat(nums[i + 3]);
-      const dy = parseFloat(nums[i + 5]);
-      ys.push(y + dy1, y + dy2, y + dy);
-      y += dy;
+  while (i < tokens.length) {
+    if (/[a-zA-Z]/.test(tokens[i])) cmd = tokens[i++];
+    if (!cmd) return ys;
+    const rel = cmd === cmd.toLowerCase();
+    const letter = cmd.toUpperCase();
+
+    if (letter === 'Z') continue;
+    if (i >= tokens.length) break;
+
+    if (letter === 'M' || letter === 'L') {
+      const nx = num(), ny = num();
+      x = rel ? x + nx : nx;
+      y = rel ? y + ny : ny;
+      ys.push(y);
+    } else if (letter === 'H') {
+      const nx = num();
+      x = rel ? x + nx : nx;
+    } else if (letter === 'V') {
+      const ny = num();
+      y = rel ? y + ny : ny;
+      ys.push(y);
+    } else if (letter === 'C') {
+      const x1 = num(), y1 = num(), x2 = num(), y2 = num(), ex = num(), ey = num();
+      ys.push(rel ? y + y1 : y1, rel ? y + y2 : y2, rel ? y + ey : ey);
+      x = rel ? x + ex : ex;
+      y = rel ? y + ey : ey;
+    } else {
+      return ys;                      // unknown command: stop, do not guess
     }
   }
+  return ys;
+}
+
+/* Vertical extent of everything an SVG actually draws.
+ *
+ * Scraping y1?="..." was not enough on three counts: it missed y2 (stem
+ * tips), it read <path> flags not at all, and it ignored the radius on a
+ * circle/ellipse and the height on a rect - so a rest drawn half outside the
+ * viewBox would have measured as comfortably inside it. Elements inside a
+ * <g transform="translate(dx, dy)"> are shifted by dy before being counted;
+ * a rotate() alongside it is ignored, which understates a rotated ellipse by
+ * under a pixel at the angle this page uses. */
+function verticalExtent(svg) {
+  const ys = [];
+
+  // Split into (body, dy) segments so grouped elements carry their offset.
+  // Groups are never nested here, so one non-greedy pass is enough.
+  const segments = [];
+  const groupRe = /<g transform="translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)[^"]*"[^>]*>([\s\S]*?)<\/g>/g;
+  let last = 0, g;
+  while ((g = groupRe.exec(svg))) {
+    segments.push({ dy: 0, body: svg.slice(last, g.index) });
+    segments.push({ dy: parseFloat(g[2]), body: g[3] });
+    last = g.index + g[0].length;
+  }
+  segments.push({ dy: 0, body: svg.slice(last) });
+
+  const attr = (tag, name) => {
+    const m = tag.match(new RegExp(`\\b${name}="(-?[\\d.]+)"`));
+    return m ? parseFloat(m[1]) : null;
+  };
+
+  for (const { dy, body } of segments) {
+    const push = (v) => { if (v !== null && !Number.isNaN(v)) ys.push(v + dy); };
+
+    for (const [tag] of body.matchAll(/<(?:line|rect|circle|ellipse|text)\b[^>]*>/g)) {
+      if (/^<line/.test(tag)) {
+        push(attr(tag, 'y1')); push(attr(tag, 'y2'));
+      } else if (/^<rect/.test(tag)) {
+        const y = attr(tag, 'y'), h = attr(tag, 'height');
+        push(y); if (y !== null && h !== null) push(y + h);
+      } else if (/^<circle/.test(tag)) {
+        const cy = attr(tag, 'cy'), r = attr(tag, 'r') || 0;
+        if (cy !== null) { push(cy - r); push(cy + r); }
+      } else if (/^<ellipse/.test(tag)) {
+        const cy = attr(tag, 'cy'), ry = attr(tag, 'ry') || 0;
+        if (cy !== null) { push(cy - ry); push(cy + ry); }
+      } else {
+        push(attr(tag, 'y'));
+      }
+    }
+
+    for (const p of body.matchAll(/<path[^>]*\bd="([^"]+)"/g)) {
+      for (const v of pathYs(p[1])) push(v);
+    }
+  }
+
   return ys.length ? { top: Math.min(...ys), bottom: Math.max(...ys) } : null;
 }
 
@@ -381,6 +453,150 @@ console.error = prevError;
 check('unknown duration logs an error', durLogged === 1, `console.error called ${durLogged}x`);
 check('unknown duration falls back to a quarter note',
       countFilledHeads(rendered.probe) === 1 && countStems(rendered.probe) === 1 && countFlags(rendered.probe) === 0);
+
+/* ---- 13. rests ---------------------------------------------------------
+ * A rest carries a duration but no pitch, so nothing here may consult a note
+ * name. The positions are checked against the engraving convention stated in
+ * staff steps - whole hangs under line 4, half sits on line 3 - recomputed
+ * from the mirrored geometry constants rather than read back out of the page.
+ */
+
+const yAtStep = (s) => LINE_Y1 - s * (LINE_SPACING / 2);
+const rectsIn = (svg) => [...svg.matchAll(/<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)]
+  .map(m => ({ x: +m[1], y: +m[2], w: +m[3], h: +m[4] }));
+
+const renderRest = (dur) => {
+  renderScoreSVG('probe', [dur === undefined ? { rest: true } : { rest: true, dur }], 'treble', 340, 160);
+  return rendered.probe;
+};
+
+/* 13a. the two bar-shaped rests hang on the lines convention puts them on */
+
+const BAR_RESTS = [
+  { dur: 'w', label: 'lặng tròn hangs below line 4', top: yAtStep(6) },
+  { dur: 'h', label: 'lặng trắng sits on top of line 3', top: yAtStep(4) - LINE_SPACING / 2 },
+];
+
+for (const spec of BAR_RESTS) {
+  const svg = renderRest(spec.dur);
+  const bars = rectsIn(svg);
+  if (bars.length !== 1) {
+    check(spec.label, false, `drew ${bars.length} rect(s), want exactly 1`);
+    continue;
+  }
+  const bar = bars[0];
+  check(spec.label,
+        Math.abs(bar.y - spec.top) < 0.01 && Math.abs(bar.h - LINE_SPACING / 2) < 0.01,
+        `top y=${bar.y} height=${bar.h}, convention says y=${spec.top} height=${LINE_SPACING / 2}`);
+}
+
+/* 13b. whole and half must not render identically - the classic confusion */
+
+check('lặng tròn and lặng trắng are drawn in different places',
+      renderRest('w') !== renderRest('h'),
+      'both durations produced byte-identical SVG');
+
+/* 13c. the squiggle rests straddle the middle line.
+ * Isolate the rest by diffing against an empty staff rather than filtering
+ * tags out: an earlier version stripped the staff lines by hand and ended up
+ * measuring the treble clef glyph, which straddles the middle line all by
+ * itself and so passed no matter where the rest was drawn. */
+
+const inner = (svg) => svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+
+const restInk = (dur) => {
+  const withRest = inner(renderRest(dur));
+  renderScoreSVG('probe', [], 'treble', 340, 160);
+  const bare = inner(rendered.probe);
+  let a = 0;
+  while (a < bare.length && bare[a] === withRest[a]) a++;
+  let b = 0;
+  while (b < bare.length - a && bare[bare.length - 1 - b] === withRest[withRest.length - 1 - b]) b++;
+  return withRest.slice(a, withRest.length - b);
+};
+
+for (const dur of ['q', 'e']) {
+  const ink = restInk(dur);
+  const ext = verticalExtent(ink);
+  const mid = yAtStep(4);
+  const ok = ext && ext.top < mid && ext.bottom > mid;
+  check(`rest '${dur}' straddles the middle line`, ok,
+        ext ? `rest ink spans [${ext.top}, ${ext.bottom}], middle line is ${mid}` : 'the rest drew nothing at all');
+}
+
+/* 13d. a rest is silence: no head, no stem, no flag, no ledger, no accidental */
+
+const contaminated = [];
+for (const dur of ['w', 'h', 'q', 'e']) {
+  const svg = renderRest(dur);
+  if (countFilledHeads(svg) || countHollowHeads(svg)) contaminated.push(`${dur}: drew a notehead`);
+  if (countStems(svg)) contaminated.push(`${dur}: drew a stem`);
+  if (countFlags(svg)) contaminated.push(`${dur}: drew a flag`);
+  if ((svg.match(/stroke="#334155"/g) || []).length) contaminated.push(`${dur}: drew a ledger line`);
+  if (svg.includes('♯')) contaminated.push(`${dur}: drew an accidental`);
+}
+check('a rest draws no notehead, stem, flag, ledger line or accidental',
+      contaminated.length === 0, contaminated.join('\n        '));
+
+/* 13e. a rest has no key, and must not be reported as a missing one */
+
+let restLogged = 0;
+const errBeforeRest = console.error;
+console.error = () => restLogged++;
+for (const dur of ['w', 'h', 'q', 'e']) renderRest(dur);
+renderRest(undefined);                       // dur omitted, like the note path
+console.error = errBeforeRest;
+check('a rest needs no key and logs nothing', restLogged === 0,
+      `console.error called ${restLogged}x - the pitch lookup is still running for rests`);
+
+/* 13f. omitting dur on a rest means a quarter rest, matching the note path */
+
+check("omitting dur on a rest draws a lặng đen", renderRest(undefined) === renderRest('q'));
+
+/* 13g. every rest stays inside the fitted viewBox */
+
+const restClipped = [];
+for (const clef of CLEFS) {
+  for (const dur of ['w', 'h', 'q', 'e']) {
+    renderScoreSVG('probe', [{ rest: true, dur }], clef, 340, 160);
+    const clip = clipReport(rendered.probe);
+    if (clip) restClipped.push(`${clef} rest dur=${dur}: ${clip}`);
+  }
+}
+check('every rest stays inside the fitted viewBox', restClipped.length === 0,
+      restClipped.join('\n        '));
+
+/* 13h. a rest takes up a slot in the bar, exactly like a note */
+
+const xsOf = (svg) => [...svg.matchAll(/translate\(([-\d.]+), [-\d.]+\) rotate/g)].map(m => +m[1]);
+renderScoreSVG('probe', [{ key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' }], 'treble', 340, 160);
+const allNotes = xsOf(rendered.probe);
+renderScoreSVG('probe', [{ key: 'c/4' }, { rest: true }, { key: 'e/4' }], 'treble', 340, 160);
+const withRest = xsOf(rendered.probe);
+check('a rest occupies its slot, leaving the notes around it in place',
+      withRest.length === 2 && allNotes.length === 3
+        && Math.abs(withRest[0] - allNotes[0]) < 0.01
+        && Math.abs(withRest[1] - allNotes[2]) < 0.01,
+      `notes at ${allNotes.join(', ')} moved to ${withRest.join(', ')}`);
+
+/* 13i. every duration can name its rest in Vietnamese */
+
+const unnamed = Object.entries(DURATIONS)
+  .filter(([, d]) => !d.restName || !/^lặng /.test(d.restName))
+  .map(([k, d]) => `${k}: restName=${d.restName}`);
+check('every duration carries a Vietnamese rest name', unnamed.length === 0, unnamed.join(', '));
+
+/* 13j. an unknown duration on a rest must complain, not guess quietly */
+
+let badRestLogged = 0;
+const errBeforeBadRest = console.error;
+console.error = () => badRestLogged++;
+renderScoreSVG('probe', [{ rest: true, dur: 'zzz' }], 'treble', 340, 160);
+console.error = errBeforeBadRest;
+const fellBack = rendered.probe;
+check('unknown duration on a rest logs an error', badRestLogged === 1,
+      `console.error called ${badRestLogged}x`);
+check('unknown duration on a rest falls back to a lặng đen', fellBack === renderRest('q'));
 
 /* ---- summary ----------------------------------------------------------- */
 

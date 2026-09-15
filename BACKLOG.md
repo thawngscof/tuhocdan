@@ -58,8 +58,16 @@ Tham số `item.dur`, mặc định `q` nên 98 lời gọi cũ không đổi m�
 
 Thêm 15 phép kiểm tra vào `tools/verify.js`, kiểm chứng bằng 12 phép phá có chủ đích.
 
-### T2 · Dấu lặng
-Lặng tròn, trắng, đen, móc đơn — vẽ đúng vị trí quy ước trên khuông.
+### T2 · Dấu lặng — ✅ XONG
+Tham số `item.rest`: mang trường độ nhưng không mang cao độ, nên bỏ qua hẳn khâu tra `notesData`. Dùng lại bảng `DURATIONS`, thêm trường `restName` để mỗi trường độ tự gọi được tên dấu lặng tiếng Việt.
+
+Vị trí theo quy ước khắc nhạc: lặng tròn **treo dưới dòng 4**, lặng trắng **nằm trên dòng 3** — hai nửa đối nhau của cùng một khe, đó là dấu hiệu duy nhất phân biệt chúng nên phép kiểm tra chốt đúng toạ độ. Lặng đen và lặng móc đơn vắt qua dòng giữa.
+
+Dấu lặng chiếm một ô trong hàng như nốt nhạc, không bị lọc bỏ. Trường độ lạ thì log lỗi rồi vẽ lặng đen.
+
+Thêm 13 phép kiểm tra, kiểm chứng bằng 9 phép phá có chủ đích — bắt được cả 9. Phép "vắt qua dòng giữa" lúc đầu **lọt lưới một mutation**: nó đo cả ký hiệu khóa Sol, mà glyph đó tự nó đã vắt qua dòng giữa nên luôn đúng bất kể vẽ dấu lặng ở đâu; đã sửa thành tách riêng ink của dấu lặng bằng cách so với khuông rỗng.
+
+Nâng `verticalExtent` trong `verify.js`: trước chỉ đọc thuộc tính `y`, giờ hiểu `rect` (cả chiều cao), bán kính `circle`/`ellipse`, lệnh `L`/`H`/`V` trong path, và dịch chuyển của `<g transform="translate">`. Đã kiểm chứng là cần thiết: một `rect` tràn đáy viewBox **chỉ bằng chiều cao** thì bản cũ bỏ lọt, bản mới bắt được.
 - **Phụ thuộc:** T1
 
 ### T3 · Số chỉ nhịp, vạch nhịp, ô nhịp

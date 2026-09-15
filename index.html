@@ -530,10 +530,10 @@
     // Note durations. `beats` counts quarter notes, so a 4/4 bar holds 4.
     // Kept at module scope because bar-line grouping will need the same numbers.
     const DURATIONS = {
-      w: { beats: 4,   hollow: true,  stem: false, flags: 0, name: "nốt tròn" },
-      h: { beats: 2,   hollow: true,  stem: true,  flags: 0, name: "nốt trắng" },
-      q: { beats: 1,   hollow: false, stem: true,  flags: 0, name: "nốt đen" },
-      e: { beats: 0.5, hollow: false, stem: true,  flags: 1, name: "nốt móc đơn" }
+      w: { beats: 4,   hollow: true,  stem: false, flags: 0, name: "nốt tròn",     restName: "lặng tròn" },
+      h: { beats: 2,   hollow: true,  stem: true,  flags: 0, name: "nốt trắng",    restName: "lặng trắng" },
+      q: { beats: 1,   hollow: false, stem: true,  flags: 0, name: "nốt đen",      restName: "lặng đen" },
+      e: { beats: 0.5, hollow: false, stem: true,  flags: 1, name: "nốt móc đơn", restName: "lặng móc đơn" }
     };
     const DEFAULT_DUR = 'q';
 
@@ -574,12 +574,62 @@
                 </g>`;
       }
 
+      const labelSvg = (x, text) =>
+        `<text x="${x}" y="22" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${text}</text>`;
+
+      // A rest has a duration but no pitch, so it sits at a spot fixed by
+      // convention rather than one derived from a note name. Coordinates are
+      // absolute (no group transform) so the viewBox fitter and the headless
+      // checks measure the real ink.
+      const yAtStep = (s) => lineY1 - s * (lineSpacing / 2);
+      const INK = "#0f172a";
+
+      function restSvg(x, durKey) {
+        const mid = yAtStep(4);                      // the middle line
+        const half = lineSpacing / 2;
+
+        if (durKey === "w" || durKey === "h") {
+          // The whole rest hangs under line 4, the half rest sits on top of
+          // line 3. They fill opposite halves of the same space - that is the
+          // only thing telling the two apart, so it has to be exact.
+          const top = durKey === "w" ? yAtStep(6) : mid - half;
+          seen(top); seen(top + half);
+          return `<rect x="${x - 6}" y="${top}" width="12" height="${half}" fill="${INK}"/>`;
+        }
+
+        if (durKey === "e") {
+          // One hook: a blob at the top left, a stroke slanting down to the left.
+          seen(mid - 8); seen(mid + 8);
+          return `<path d="M ${x + 3.5} ${mid - 8} L ${x - 2} ${mid + 8}" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`
+               + `<path d="M ${x + 3.5} ${mid - 8} c -1.5 -1, -3.5 -0.5, -4.5 1.5" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
+               + `<circle cx="${x - 2.5}" cy="${mid - 5}" r="2.9" fill="${INK}"/>`;
+        }
+
+        // Quarter rest: a zigzag straddling the middle line.
+        seen(mid - 10); seen(mid + 10);
+        return `<path d="M ${x - 4} ${mid - 10} L ${x + 3} ${mid - 3} L ${x - 3} ${mid + 2.5} L ${x + 3} ${mid + 10}" `
+             + `fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }
+
       // Draw Notes with Dynamic Ledger Lines
       const totalNotes = notesArray.length;
       const availWidth = width - startX - 35;
       const noteSpacing = totalNotes > 1 ? availWidth / (totalNotes - 0.5) : availWidth / 2;
 
       notesArray.forEach((item, idx) => {
+        const noteX = startX + idx * noteSpacing + 20;
+
+        // Silence takes up a slot in the bar exactly like a note does.
+        if (item.rest) {
+          const restDur = item.dur || DEFAULT_DUR;
+          if (!DURATIONS[restDur]) {
+            console.error(`renderScoreSVG: unknown duration "${restDur}" on a rest - drawing a lặng đen.`);
+          }
+          svg += restSvg(noteX, DURATIONS[restDur] ? restDur : DEFAULT_DUR);
+          if (item.label) svg += labelSvg(noteX, item.label);
+          return;
+        }
+
         const noteData = notesData[clef].find(n => n.key === item.key);
         if (!noteData) {
           // Never guess a position: a wrong notehead teaches the wrong thing.
@@ -590,7 +640,6 @@
         
         // Y position relative to Line 1 (lineY1)
         const noteY = lineY1 - step * (lineSpacing / 2);
-        const noteX = startX + idx * noteSpacing + 20;
 
         // Dynamic Lower Ledger Lines (step <= -2)
         if (step <= -2) {
@@ -658,9 +707,7 @@
         }
 
         // Draw Annotation Label if provided
-        if (item.label) {
-          svg += `<text x="${noteX}" y="22" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${item.label}</text>`;
-        }
+        if (item.label) svg += labelSvg(noteX, item.label);
       });
 
       const vbTop = Math.min(0, minY - 14);
