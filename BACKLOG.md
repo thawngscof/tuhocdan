@@ -30,6 +30,14 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Bài hát tập chơi | chưa có |
 | Lộ trình bài học có thứ tự | chưa có |
 
+## Chạy kiểm thử
+
+```
+node tools/verify.js
+```
+
+Chỉ cần Node, không cài gì thêm. **Bắt buộc chạy sau mỗi thay đổi `renderScoreSVG` hoặc dữ liệu nốt** — T1–T4 đều sửa renderer.
+
 ## Nguyên tắc kỹ thuật
 
 - Giữ **một file `index.html` tự chứa**, không build step — deploy thẳng lên GitHub Pages
@@ -129,7 +137,7 @@ Dữ liệu hiện chỉ có nốt thăng (`acc: "♯"`). Thêm cách ghi giáng
 Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 
 ### T17 · Bàn phím đàn trên màn hình nhỏ
-49 phím × 44px = 2156px, hiện phải cuộn ngang trên điện thoại. Cân nhắc thu nhỏ hoặc chế độ 2 quãng tám.
+29 phím trắng × 44px + 32px padding = 1308px (phím đen định vị absolute nên không cộng bề ngang), hiện phải cuộn ngang trên điện thoại. Cân nhắc thu nhỏ hoặc chế độ 2 quãng tám.
 
 ## Nợ kỹ thuật
 
@@ -138,12 +146,15 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 Cần `git commit --amend --reset-author` + force-push.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 59KB / 918 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 58KB / 918 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
-### T20 · Đưa script kiểm thử vào repo
-Đã có script verify headless (stub DOM, chạy `renderScoreSVG` cho cả 98 nốt, kiểm tra vị trí / dấu hóa / viewBox) nhưng đang nằm ở thư mục tạm.
-Đưa vào `tools/verify.js` để mỗi thay đổi renderer đều chạy lại được.
+### T20 · Đưa script kiểm thử vào repo — ✅ XONG
+`tools/verify.js`, chạy bằng `node tools/verify.js`, exit khác 0 khi có lỗi.
+
+Đối chiếu bằng **nguồn độc lập**: suy vị trí nốt từ tên nốt qua công thức bậc quãng, không đọc `step`/`acc` trong dữ liệu — so với chính trường mà renderer dùng thì sửa sai dữ liệu sẽ làm cả hai vế cùng đổi và phép kiểm tra thành vô nghĩa. Số dòng kẻ phụ đếm trên SVG thật chứ không tính lại.
+
+Đã kiểm chứng bằng 8 phép phá có chủ đích, bắt được cả 8: khôi phục fallback `step: 0`, đặt sai bậc nốt, xoá dấu thăng, trả lại vòng lặp dòng kẻ phụ thừa, quay về ký âm giáng, phá `scrollKeyboardTo`, bỏ viewBox co giãn, xoá một nốt khỏi dữ liệu.
 
 ## Việc chưa kiểm chứng
 
