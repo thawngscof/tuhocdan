@@ -86,6 +86,29 @@
       transform: translateY(2px);
       box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
     }
+    .key-finger {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 20px;
+      border-radius: 9999px;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .white-key .key-finger { bottom: 44px; }
+    .black-key .key-finger { bottom: 8px; width: 18px; height: 18px; font-size: 10px; }
+    /* On a lit-up key the blue badge would vanish into the blue key. */
+    .white-key.active .key-finger, .black-key.active .key-finger {
+      background: #ffffff;
+      color: #1d4ed8;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
@@ -537,6 +560,13 @@
     };
     const DEFAULT_DUR = 'q';
 
+    // Fingering runs 1 (ngón cái) to 5 (ngón út) on each hand. Anything else is
+    // a mistake in the passage, not a number to draw.
+    const isFingerNumber = (n) => Number.isInteger(n) && n >= 1 && n <= 5;
+
+    // Fingering shown on the keys themselves - off unless asked for.
+    let keyFingering = {};
+
     // Generalized SVG Pure Renderer Function
     function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null) {
       const container = document.getElementById(containerId);
@@ -608,8 +638,14 @@
                 </g>`;
       }
 
-      const labelSvg = (x, text) =>
-        `<text x="${x}" y="22" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${text}</text>`;
+      const LABEL_Y = 22;
+      const labelSvg = (x, text, fingerY = null) => {
+        // A label and a finger number share the same column, so the label steps
+        // up out of the way when both are on the one note.
+        const y = fingerY === null ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);
+        if (y !== LABEL_Y) seen(y - 9);
+        return `<text x="${x}" y="${y}" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${text}</text>`;
+      };
 
       // A rest has a duration but no pitch, so it sits at a spot fixed by
       // convention rather than one derived from a note name. Coordinates are
@@ -681,6 +717,9 @@
 
         // Silence takes up a slot in the bar exactly like a note does.
         if (item.rest) {
+          if (item.finger !== undefined) {
+            console.error('renderScoreSVG: a rest has no finger - the number was dropped.');
+          }
           const restDur = item.dur || DEFAULT_DUR;
           if (!DURATIONS[restDur]) {
             console.error(`renderScoreSVG: unknown duration "${restDur}" on a rest - drawing a lặng đen.`);
@@ -747,8 +786,8 @@
         }
 
         // Draw Stem (down if the note sits high on the staff, up if low)
+        const stemUp = step <= 4;
         if (shape.stem) {
-          const stemUp = step <= 4;
           const dir = stemUp ? -1 : 1;              // -1 draws upward on screen
           const stemX = noteX + (stemUp ? 5.5 : -5.5);
           const stemY2 = noteY + dir * 26;
@@ -766,8 +805,28 @@
           }
         }
 
+        // Fingering is printed as a row above the staff, the way piano method
+        // books set it, and only climbs higher for a note that already sits
+        // above that row. Hugging each notehead instead would put the number
+        // in among the ledger lines of anything far below the staff - at C2 it
+        // landed squarely on top of them.
+        //
+        // Only the notehead is worth measuring here. A stem pointing up belongs
+        // to a note on or below the middle line, which is always well below the
+        // row, so the stem tip can never be the thing the number has to clear.
+        let fingerY = null;
+        if (item.finger !== undefined) {
+          if (!isFingerNumber(item.finger)) {
+            console.error(`renderScoreSVG: finger "${item.finger}" on "${item.key}" is not 1-5 - skipped.`);
+          } else {
+            fingerY = Math.min(topMargin - 8, noteY - 13);
+            seen(fingerY - 9);
+            svg += `<text x="${noteX}" y="${fingerY}" font-family="Inter, sans-serif" font-size="12" font-weight="800" fill="#7c3aed" text-anchor="middle">${item.finger}</text>`;
+          }
+        }
+
         // Draw Annotation Label if provided
-        if (item.label) svg += labelSvg(noteX, item.label);
+        if (item.label) svg += labelSvg(noteX, item.label, fingerY);
       });
 
       const vbTop = Math.min(0, minY - 14);
@@ -783,18 +842,46 @@
       if (!keyboardEl) return;
 
       let html = '';
+      const fingerBadge = (k) => keyFingering[k.key]
+        ? `<span class="key-finger pointer-events-none">${keyFingering[k.key]}</span>`
+        : '';
+
       keyboardKeys.forEach((k) => {
         if (k.type === 'white') {
           html += `<div class="white-key" id="key-${k.key.replace('/', '_')}" onclick="handleKeyClick('${k.key}')">
-                    <span class="text-xs font-bold pointer-events-none">${k.name}</span>
+                    ${fingerBadge(k)}<span class="text-xs font-bold pointer-events-none">${k.name}</span>
                     <span class="key-sub text-[10px] text-slate-400 font-medium pointer-events-none">${k.noteName}</span>
                   </div>`;
         } else {
-          html += `<div class="black-key" id="key-${k.key.replace('/', '_')}" style="left: ${k.pos + 16}px;" onclick="handleKeyClick('${k.key}')"></div>`;
+          html += `<div class="black-key" id="key-${k.key.replace('/', '_')}" style="left: ${k.pos + 16}px;" onclick="handleKeyClick('${k.key}')">${fingerBadge(k)}</div>`;
         }
       });
 
       keyboardEl.innerHTML = html;
+    }
+
+    // Show fingering on the keys themselves: pass { "c/4": 1, "d/4": 2 }.
+    // The map is stored and the keyboard redrawn from it, so the markup has one
+    // source rather than badges being poked into the DOM after the fact.
+    function setKeyFingering(mapping) {
+      const next = {};
+      Object.entries(mapping || {}).forEach(([key, finger]) => {
+        if (!isFingerNumber(finger)) {
+          console.error(`setKeyFingering: finger "${finger}" on "${key}" is not 1-5 - skipped.`);
+          return;
+        }
+        if (!keyboardKeys.some((k) => k.key === key)) {
+          console.error(`setKeyFingering: no key "${key}" on the keyboard - skipped.`);
+          return;
+        }
+        next[key] = finger;
+      });
+      keyFingering = next;
+      buildPianoKeyboard();
+    }
+
+    function clearKeyFingering() {
+      setKeyFingering({});
     }
 
     // Scroll keyboard to specific octave position

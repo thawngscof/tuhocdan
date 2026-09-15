@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -160,7 +160,12 @@ function verticalExtent(svg) {
         const cy = attr(tag, 'cy'), ry = attr(tag, 'ry') || 0;
         if (cy !== null) { push(cy - ry); push(cy + ry); }
       } else {
-        push(attr(tag, 'y'));
+        // <text>: the baseline is the anchor, but the glyphs stand above it.
+        // Treating the baseline as the whole extent let a number sit with its
+        // digits outside the viewBox and still measure as inside.
+        const y = attr(tag, 'y'), size = attr(tag, 'font-size') || 0;
+        push(y);
+        if (y !== null) push(y - size * 0.75);
       }
     }
 
@@ -764,6 +769,242 @@ const meteredFirstX = noteXs(quiet(() => meterRender(q(4), '4/4')))[0];
 check('a meter pushes the notes clear of its own numerals',
       meteredFirstX > 66 + 11,          // numeral centre x=66, half a 22pt glyph
       `numerals centred at x=66 but the first note sits at x=${meteredFirstX}`);
+
+/* ---- 15. fingering ------------------------------------------------------
+ * "Above the note" is checked against the note's own ink, isolated by
+ * diffing the render against an empty staff, rather than against the
+ * formula the renderer uses to place the number.
+ */
+
+const inkOf = (items, clef = 'treble') => {
+  renderScoreSVG('probe', items, clef, 340, 160);
+  const full = inner(rendered.probe);
+  renderScoreSVG('probe', [], clef, 340, 160);
+  const bare = inner(rendered.probe);
+  let a = 0;
+  while (a < bare.length && bare[a] === full[a]) a++;
+  let b = 0;
+  while (b < bare.length - a && bare[bare.length - 1 - b] === full[full.length - 1 - b]) b++;
+  return full.slice(a, full.length - b);
+};
+
+const FINGER_RE = /<text x="([-\d.]+)" y="([-\d.]+)"[^>]*fill="#7c3aed"[^>]*>(\d)<\/text>/;
+const fingerIn = (svg) => { const m = FINGER_RE.exec(svg); return m ? { x: +m[1], y: +m[2], n: m[3] } : null; };
+
+/* 15a. every finger number reaches the staff */
+
+const unwritten = [];
+for (let n = 1; n <= 5; n++) {
+  renderScoreSVG('probe', [{ key: 'g/4', finger: n }], 'treble', 340, 160);
+  const f = fingerIn(rendered.probe);
+  if (!f || f.n !== String(n)) unwritten.push(`finger ${n}: drew ${f ? f.n : 'nothing'}`);
+}
+check('fingers 1 to 5 are written on the staff', unwritten.length === 0, unwritten.join(', '));
+
+/* 15b. the number clears the note, stem and all, in both directions */
+
+const buried = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    for (const dur of ['w', 'h', 'q', 'e']) {
+      const plain = verticalExtent(inkOf([{ key: note.key, dur }], clef));
+      renderScoreSVG('probe', [{ key: note.key, dur, finger: 3 }], clef, 340, 160);
+      const f = fingerIn(rendered.probe);
+      if (!f) { buried.push(`${clef} ${note.noteName} ${dur}: no number drawn`); continue; }
+      if (!plain || f.y >= plain.top) {
+        buried.push(`${clef} ${note.noteName} ${dur}: number at y=${f.y}, note ink starts at y=${plain && plain.top}`);
+      }
+    }
+  }
+}
+check('the finger number sits clear above the note and its stem', buried.length === 0,
+      buried.slice(0, 5).join('\n        '));
+
+/* 15c. the number is centred on the note it belongs to */
+
+renderScoreSVG('probe', [{ key: 'c/4' }, { key: 'e/4', finger: 2 }, { key: 'g/4' }], 'treble', 340, 160);
+const midX = noteXs(rendered.probe)[1];
+check('the finger number is centred over its own note',
+      Math.abs(fingerIn(rendered.probe).x - midX) < 0.01,
+      `number at x=${fingerIn(rendered.probe).x}, note at x=${midX}`);
+
+/* 15d. anything that is not a finger is refused */
+
+for (const bad of [0, 6, -1, 2.5, '3', null, true]) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  renderScoreSVG('probe', [{ key: 'g/4', finger: bad }], 'treble', 340, 160);
+  console.error = realErr;
+  check(`finger ${JSON.stringify(bad)} is refused`, logged === 1 && fingerIn(rendered.probe) === null,
+        `console.error called ${logged}x; number ${fingerIn(rendered.probe) ? 'DRAWN' : 'not drawn'}`);
+}
+
+/* 15e. a finger adds a number and moves nothing else */
+
+const moved = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    renderScoreSVG('probe', [{ key: note.key }], clef, 340, 160);
+    const plain = inner(rendered.probe);
+    renderScoreSVG('probe', [{ key: note.key, finger: 4 }], clef, 340, 160);
+    if (inner(rendered.probe).replace(FINGER_RE, '') !== plain) moved.push(`${clef} ${note.noteName}`);
+  }
+}
+check('adding a finger changes nothing but the number', moved.length === 0,
+      'the note itself moved for: ' + moved.slice(0, 5).join(', '));
+
+/* 15f. the number stays inside the fitted viewBox */
+
+const fingerClipped = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    for (const dur of ['w', 'h', 'q', 'e']) {
+      renderScoreSVG('probe', [{ key: note.key, dur, finger: 5 }], clef, 340, 160);
+      const clip = clipReport(rendered.probe);
+      if (clip) fingerClipped.push(`${clef} ${note.noteName} ${dur}: ${clip}`);
+    }
+  }
+}
+check('the finger number stays inside the fitted viewBox', fingerClipped.length === 0,
+      fingerClipped.slice(0, 5).join('\n        '));
+
+/* 15g. a rest has no finger */
+
+let restFingerLogged = 0;
+const errBeforeRestFinger = console.error;
+console.error = () => restFingerLogged++;
+renderScoreSVG('probe', [{ rest: true, finger: 2 }], 'treble', 340, 160);
+console.error = errBeforeRestFinger;
+check('a finger on a rest is refused', restFingerLogged === 1 && fingerIn(rendered.probe) === null,
+      `console.error called ${restFingerLogged}x; number ${fingerIn(rendered.probe) ? 'DRAWN' : 'not drawn'}`);
+
+/* 15g. the numbers line up in one row above the staff -------------------
+ * Method books print fingering as a row, not as a number chasing each
+ * notehead up and down. Only a note already above that row may push it
+ * higher, and nothing may drop it into the staff or the ledger lines.
+ */
+
+const BAND_Y = TOP_MARGIN - 8;
+const strayBand = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    for (const dur of ['w', 'h', 'q', 'e']) {
+      renderScoreSVG('probe', [{ key: note.key, dur, finger: 1 }], clef, 340, 160);
+      const f = fingerIn(rendered.probe);
+      if (!f || f.y > BAND_Y + 0.01) {
+        strayBand.push(`${clef} ${note.noteName} ${dur}: number at y=${f && f.y}, row sits at y=${BAND_Y}`);
+      }
+    }
+  }
+}
+check('every finger number sits in the row above the staff or higher',
+      strayBand.length === 0, strayBand.slice(0, 5).join('\n        '));
+
+const onStaff = notesData.treble.find(n => n.step === 0);
+renderScoreSVG('probe', [{ key: onStaff.key, finger: 1 }], 'treble', 340, 160);
+const bandY = fingerIn(rendered.probe).y;
+const lowest = notesData.treble.reduce((a, b) => (a.step < b.step ? a : b));
+renderScoreSVG('probe', [{ key: lowest.key, finger: 1 }], 'treble', 340, 160);
+check('a note far below the staff keeps its number in the same row',
+      Math.abs(fingerIn(rendered.probe).y - bandY) < 0.01,
+      `${lowest.noteName} put its number at y=${fingerIn(rendered.probe).y}, the row is at y=${bandY}`);
+
+const highest = notesData.treble.reduce((a, b) => (a.step > b.step ? a : b));
+renderScoreSVG('probe', [{ key: highest.key, finger: 1 }], 'treble', 340, 160);
+check('a note above the row pushes its number higher still',
+      fingerIn(rendered.probe).y < bandY,
+      `${highest.noteName} put its number at y=${fingerIn(rendered.probe).y}, no higher than the row at y=${bandY}`);
+
+/* 15h. a label and a finger share a column without landing on each other */
+
+// The accidental glyph is drawn in the same blue, so match the label by its own
+// type settings rather than by colour alone - matching on colour picked up the
+// sharp sign instead and reported every sharp note as a collision.
+const LABEL_RE = /<text x="[-\d.]+" y="([-\d.]+)" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">([^<]*)<\/text>/;
+const collided = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    renderScoreSVG('probe', [{ key: note.key, finger: 3, label: 'Đô' }], clef, 340, 160);
+    const f = fingerIn(rendered.probe), l = LABEL_RE.exec(rendered.probe);
+    if (!f || !l) { collided.push(`${clef} ${note.noteName}: finger or label missing`); continue; }
+    if (+l[1] > f.y - 13) collided.push(`${clef} ${note.noteName}: label at y=${l[1]}, finger at y=${f.y}`);
+  }
+}
+check('a label steps clear of a finger number on the same note', collided.length === 0,
+      collided.slice(0, 5).join('\n        '));
+
+renderScoreSVG('probe', [{ key: 'g/4', label: 'Sol' }], 'treble', 340, 160);
+check('a label on its own still sits where it always did',
+      Math.abs(+LABEL_RE.exec(rendered.probe)[1] - 22) < 0.01);
+
+/* ---- fingering on the keys themselves ---------------------------------- */
+
+const KEYBOARD = 'keyboard-element';
+const keyDivs = (html) => {
+  const out = {};
+  for (const m of html.matchAll(/<div class="(?:white|black)-key" id="key-([^"]+)"[\s\S]*?<\/div>/g)) out[m[1]] = m[0];
+  return out;
+};
+// Capture whatever the badge holds, not just a digit: a narrower pattern read
+// a badge of "undefined" as no badge at all, and a mutation that marked every
+// key on the keyboard sailed straight through.
+const badgeIn = (div) => {
+  const m = /<span class="key-finger[^"]*">([^<]*)<\/span>/.exec(div);
+  return m ? m[1] : null;
+};
+
+buildPianoKeyboard();
+const bareKeyboard = rendered[KEYBOARD];
+check('the keyboard shows no fingering until it is asked for',
+      Object.values(keyDivs(bareKeyboard)).every(d => badgeIn(d) === null));
+
+/* 15h. the number lands on the right key, and only there */
+
+setKeyFingering({ 'c/4': 1, 'e/4': 3, 'c#/4': 2 });
+const marked = keyDivs(rendered[KEYBOARD]);
+const wrongBadge = [];
+const want = { 'c_4': '1', 'e_4': '3', 'c#_4': '2' };
+for (const [id, div] of Object.entries(marked)) {
+  const got = badgeIn(div), expected = want[id] || null;
+  if (got !== expected) wrongBadge.push(`${id}: badge ${got}, want ${expected}`);
+}
+check('setKeyFingering marks exactly the keys it was given', wrongBadge.length === 0,
+      wrongBadge.slice(0, 5).join(', '));
+check('a black key can carry fingering too', badgeIn(marked['c#_4']) === '2');
+
+/* 15i. a second call replaces the first rather than piling up */
+
+setKeyFingering({ 'g/4': 5 });
+const replaced = keyDivs(rendered[KEYBOARD]);
+check('setKeyFingering replaces the previous marks',
+      badgeIn(replaced['g_4']) === '5' && badgeIn(replaced['c_4']) === null && badgeIn(replaced['e_4']) === null,
+      'the earlier fingering is still on the keyboard');
+
+/* 15j. clearing puts the keyboard back exactly as it was */
+
+clearKeyFingering();
+check('clearKeyFingering restores the keyboard byte for byte',
+      rendered[KEYBOARD] === bareKeyboard);
+
+/* 15k. a key or a number that makes no sense is refused */
+
+for (const [label, map] of [
+  ['an unknown key', { 'zz/9': 1 }],
+  ['a finger of 0', { 'c/4': 0 }],
+  ['a finger of 6', { 'c/4': 6 }],
+  ['a finger written as text', { 'c/4': '2' }],
+]) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  setKeyFingering(map);
+  console.error = realErr;
+  const after = rendered[KEYBOARD];
+  check(`setKeyFingering refuses ${label}`, logged === 1 && after === bareKeyboard,
+        `console.error called ${logged}x; keyboard ${after === bareKeyboard ? 'unchanged' : 'CHANGED'}`);
+}
+clearKeyFingering();
 
 /* ---- summary ----------------------------------------------------------- */
 

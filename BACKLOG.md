@@ -26,7 +26,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Số chỉ nhịp, vạch nhịp, ô nhịp | ✅ T3 |
 | Tiết tấu, máy gõ nhịp | chưa có |
 | Hợp âm tay trái | chưa có — thiếu sót lớn nhất với organ |
-| Gam, ngón bấm | chưa có |
+| Gam, ngón bấm | số ngón ✅ T4, gam chưa có |
 | Bài hát tập chơi | chưa có |
 | Lộ trình bài học có thứ tự | chưa có |
 
@@ -82,8 +82,19 @@ Tham số thứ sáu `timeSig`, dạng chuỗi `"3/4"`. Sức chứa ô nhịp q
 Thêm 33 phép kiểm tra, kiểm chứng bằng 13 phép phá có chủ đích — bắt được cả 13. Ranh giới ô nhịp đối chiếu bằng **kỳ vọng viết tay** chứ không cài lại vòng lặp chia ô nhịp trong test: viết lại thuật toán thì hai bên sẽ cùng sai một kiểu.
 - **Phụ thuộc:** T1, T2
 
-### T4 · Số ngón tay
-Hiện số 1–5 phía trên nốt trên khuông, và tùy chọn hiện trên phím đàn.
+### T4 · Số ngón tay — ✅ XONG
+Tham số `item.finger` (1–5). Chỉ nhận số nguyên 1–5; ngoài khoảng đó, hoặc chuỗi `"3"`, hoặc đặt lên dấu lặng, thì `console.error` rồi bỏ qua.
+
+Số ngón in thành **một hàng phía trên khuông** như sách dạy đàn, chỉ dâng cao hơn với nốt vốn đã nằm trên hàng đó. Ban đầu tôi cho số bám sát từng nốt — test bắt ngay: nốt C2 khóa Sol có tới 8 dòng kẻ phụ, số ngón rơi đúng vào giữa đám dòng đó.
+
+Trên phím đàn: `setKeyFingering({ "c/4": 1 })` và `clearKeyFingering()`. Map được lưu rồi **vẽ lại bàn phím từ nó**, chứ không chọc badge vào DOM sau — markup chỉ có một nguồn. Phím lạ hoặc số lạ đều bị từ chối.
+
+Nhãn `item.label` và số ngón dùng chung một cột, nên nhãn tự dâng lên khi nốt có cả hai.
+
+Thêm 27 phép kiểm tra, kiểm chứng bằng 16 phép phá có chủ đích. **Ba phép lọt lưới ở lần chạy đầu**, mỗi phép lộ một vấn đề khác nhau:
+- Nhánh "tránh đuôi nốt hướng lên" hoá ra là **code chết** — nốt có đuôi hướng lên luôn nằm dưới hàng số ngón nên số hạng đó không bao giờ thắng. Đã xoá thay vì viết test cho nó.
+- `verticalExtent` coi `<text>` là một điểm, quên rằng chữ vươn lên trên đường cơ sở. Nay tính thêm phần thân chữ theo `font-size`.
+- Regex đọc badge chỉ bắt chữ số, nên badge `undefined` bị đọc thành "không có badge". Đã nới thành bắt mọi nội dung.
 - **Phụ thuộc:** T1
 
 ## Giai đoạn 2 — Động cơ phát nhạc
@@ -161,7 +172,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 65KB / 1065 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 67KB / 1153 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
