@@ -24,7 +24,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Hình nốt (tròn, trắng, đen, móc đơn) | ✅ T1 |
 | Dấu lặng | ✅ T2 |
 | Số chỉ nhịp, vạch nhịp, ô nhịp | ✅ T3 |
-| Tiết tấu, máy gõ nhịp | chưa có |
+| Tiết tấu, máy gõ nhịp | máy gõ nhịp ✅ T5 |
 | Hợp âm tay trái | chưa có — thiếu sót lớn nhất với organ |
 | Gam, ngón bấm | số ngón ✅ T4, gam chưa có |
 | Bài hát tập chơi | chưa có |
@@ -99,8 +99,16 @@ Thêm 27 phép kiểm tra, kiểm chứng bằng 16 phép phá có chủ đích.
 
 ## Giai đoạn 2 — Động cơ phát nhạc
 
-### T5 · Máy gõ nhịp
-Web Audio, chỉnh 40–208 BPM, nhấn mạnh phách đầu ô nhịp, đèn nháy theo phách.
+### T5 · Máy gõ nhịp — ✅ XONG
+Kiểu scheduler nhìn trước kinh điển của Web Audio: một `setInterval` 25ms chỉ để **thức dậy**, còn mọi thời điểm gõ đều tính theo `AudioContext.currentTime` và lập lịch trước 0.12s. `setInterval` trôi, đồng hồ audio thì không.
+
+40–208 BPM (ngoài khoảng thì từ chối), 2–12 phách/ô nhịp. Phách đầu ô nhịp gõ **cao hơn và to hơn** (1600Hz/0.26 so với 1000Hz/0.15) — cả hai khác biệt đều có test riêng, vì chỉ đổi một trong hai là mất tác dụng nhấn. Tiếng gõ đi qua đúng chuỗi limiter của T7.
+
+Đèn phách: hàng chấm tròn, chấm đầu to hơn. `metronomeBeatAt(now)` **rút cạn** hàng đợi tới thời điểm hiện tại rồi trả về phách gần nhất, nên một khung hình đến muộn sẽ nháy đúng phách hiện tại chứ không phát lại cả chuỗi phách đã lỡ.
+
+Giao diện: thẻ "Máy Gõ Nhịp" trong tab Luyện Tập — nút bắt đầu/dừng, thanh trượt tốc độ, chọn số phách/ô nhịp.
+
+Thêm 43 phép kiểm tra, kiểm chứng bằng 20 phép phá — bắt được cả 20. **Ba phép lúc đầu không bị bắt đúng nghĩa:** hai phép làm rò `setInterval` chỉ khiến tiến trình treo (bộ test không phát hiện, nó chỉ chết), và phép "scheduler chạy tiếp sau khi dừng" lọt hẳn vì lúc kiểm tra thì chưa có phách nào tới hạn. Nay `verify.js` đếm timer đang mở (và `unref` chúng), còn phép kiểm tra cho đồng hồ chạy vượt qua phách đang chờ trước khi đo.
 
 ### T6 · Phát chuỗi nốt theo trường độ
 Phát một dãy nốt đúng tiết tấu, sáng phím đồng bộ, có tạm dừng / tốc độ chậm / lặp từng câu.
@@ -177,7 +185,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 70KB / 1223 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 78KB / 1421 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG

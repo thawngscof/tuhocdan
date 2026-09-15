@@ -86,6 +86,27 @@
       transform: translateY(2px);
       box-shadow: 1px 2px 4px rgba(0,0,0,0.5);
     }
+    .beat-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 9999px;
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+      transition: transform 0.06s ease, background 0.06s ease;
+    }
+    .beat-dot-accent {
+      width: 18px;
+      height: 18px;
+      border-color: #94a3b8;
+    }
+    .beat-dot-lit {
+      background: #2563eb;
+      border-color: #1d4ed8;
+      transform: scale(1.25);
+    }
+    .beat-dot-accent.beat-dot-lit {
+      background: #1d4ed8;
+    }
     .key-finger {
       position: absolute;
       left: 50%;
@@ -218,6 +239,46 @@
         <div id="keyboard-scroll-container" class="w-full overflow-x-auto pb-4 flex justify-start md:justify-center scroll-smooth">
           <div id="keyboard-element" class="keyboard-wrapper select-none">
             <!-- Dynamic Keys Generated in JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Metronome -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Máy Gõ Nhịp</h2>
+            <p class="text-sm text-slate-500">Phách đầu ô nhịp gõ mạnh hơn — đếm theo nó.</p>
+          </div>
+          <button id="metronome-toggle" onclick="toggleMetronome()"
+                  class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm hover:bg-blue-700 transition-all">
+            Bắt đầu
+          </button>
+        </div>
+
+        <div id="metronome-beats" class="flex items-center gap-3 mb-5 min-h-[20px]">
+          <!-- Beat dots generated in JS -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-5">
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-1">
+              <label for="metronome-bpm" class="text-xs font-bold uppercase tracking-wider text-slate-500">Tốc độ</label>
+              <span id="metronome-bpm-value" class="text-sm font-bold text-blue-600">90 BPM</span>
+            </div>
+            <input id="metronome-bpm" type="range" min="40" max="208" value="90" step="1"
+                   oninput="setMetronomeBpm(Number(this.value))"
+                   class="w-full accent-blue-600">
+          </div>
+
+          <div class="sm:w-40">
+            <label for="metronome-meter" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Số phách/ô nhịp</label>
+            <select id="metronome-meter" onchange="setMetronomeBeatsPerBar(Number(this.value))"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 bg-white">
+              <option value="2">2 — nhịp 2/4</option>
+              <option value="3">3 — nhịp 3/4</option>
+              <option value="4" selected>4 — nhịp 4/4</option>
+            </select>
           </div>
         </div>
       </div>
@@ -999,6 +1060,142 @@
       }
     }
 
+    /* ---- Metronome -------------------------------------------------------
+     * The classic Web Audio metronome: a coarse timer wakes up often enough to
+     * look a little way ahead, and every click is scheduled against
+     * AudioContext.currentTime. The timer only decides *when to think*; it
+     * never decides when a click sounds, because setInterval drifts and the
+     * audio clock does not.
+     */
+    const METRONOME_BPM = { min: 40, max: 208 };
+    const LOOKAHEAD_MS = 25;        // how often to wake up
+    const SCHEDULE_AHEAD = 0.12;    // how far ahead to schedule, in seconds
+
+    const metronome = { running: false, bpm: 90, beatsPerBar: 4, nextBeatTime: 0, beat: 0, timer: null, frame: null };
+    const metronomeQueue = [];      // clicks already scheduled, for the beat light
+
+    function setMetronomeBpm(bpm) {
+      if (!Number.isFinite(bpm) || bpm < METRONOME_BPM.min || bpm > METRONOME_BPM.max) {
+        console.error(`setMetronomeBpm: ${bpm} is outside ${METRONOME_BPM.min}-${METRONOME_BPM.max} BPM - ignored.`);
+        return false;
+      }
+      metronome.bpm = bpm;
+      const label = document.getElementById('metronome-bpm-value');
+      if (label) label.innerText = `${bpm} BPM`;
+      return true;
+    }
+
+    function setMetronomeBeatsPerBar(beats) {
+      if (!Number.isInteger(beats) || beats < 2 || beats > 12) {
+        console.error(`setMetronomeBeatsPerBar: ${beats} is not a bar length between 2 and 12 - ignored.`);
+        return false;
+      }
+      metronome.beatsPerBar = beats;
+      metronome.beat = 0;
+      buildBeatLights();
+      return true;
+    }
+
+    // The first beat of the bar is higher and louder - that accent is the whole
+    // point of counting along to it.
+    function scheduleClick(beatIndex, at) {
+      const ctx = ensureAudio();
+      const accent = beatIndex === 0;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(accent ? 1600 : 1000, at);
+
+      const peak = accent ? 0.26 : 0.15;
+      gain.gain.setValueAtTime(SILENT, at);
+      gain.gain.exponentialRampToValueAtTime(peak, at + 0.002);
+      gain.gain.exponentialRampToValueAtTime(SILENT, at + 0.045);
+
+      osc.connect(gain);
+      gain.connect(masterLimiter);
+      osc.start(at);
+      osc.stop(at + 0.06);
+
+      metronomeQueue.push({ beat: beatIndex, at });
+    }
+
+    function metronomeScheduler() {
+      if (!metronome.running) return;
+      const ctx = ensureAudio();
+      while (metronome.nextBeatTime < ctx.currentTime + SCHEDULE_AHEAD) {
+        scheduleClick(metronome.beat, metronome.nextBeatTime);
+        metronome.nextBeatTime += 60 / metronome.bpm;
+        metronome.beat = (metronome.beat + 1) % metronome.beatsPerBar;
+      }
+    }
+
+    // Which beat should be lit at `now`. Drains everything already due, so a
+    // frame that arrives late lights the most recent beat rather than replaying
+    // the backlog one frame at a time.
+    function metronomeBeatAt(now) {
+      let current = null;
+      while (metronomeQueue.length && metronomeQueue[0].at <= now) current = metronomeQueue.shift();
+      return current === null ? null : current.beat;
+    }
+
+    function startMetronome() {
+      if (metronome.running) return;
+      const ctx = ensureAudio();
+      metronome.running = true;
+      metronome.beat = 0;
+      metronomeQueue.length = 0;
+      metronome.nextBeatTime = ctx.currentTime + 0.08;   // a beat of headroom
+      metronomeScheduler();
+      metronome.timer = setInterval(metronomeScheduler, LOOKAHEAD_MS);
+      if (typeof requestAnimationFrame === 'function') metronomeFrame();
+      const btn = document.getElementById('metronome-toggle');
+      if (btn) btn.innerText = 'Dừng';
+    }
+
+    function stopMetronome() {
+      if (metronome.timer !== null) clearInterval(metronome.timer);
+      if (metronome.frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(metronome.frame);
+      metronome.timer = null;
+      metronome.frame = null;
+      metronome.running = false;
+      metronomeQueue.length = 0;
+      lightBeat(null);
+      const btn = document.getElementById('metronome-toggle');
+      if (btn) btn.innerText = 'Bắt đầu';
+    }
+
+    function toggleMetronome() {
+      if (metronome.running) stopMetronome(); else startMetronome();
+    }
+
+    function metronomeFrame() {
+      if (!metronome.running) return;
+      const beat = metronomeBeatAt(audioCtx.currentTime);
+      if (beat !== null) lightBeat(beat);
+      metronome.frame = requestAnimationFrame(metronomeFrame);
+    }
+
+    function buildBeatLights() {
+      const row = document.getElementById('metronome-beats');
+      if (!row) return;
+      let html = '';
+      for (let i = 0; i < metronome.beatsPerBar; i++) {
+        html += `<span class="beat-dot${i === 0 ? ' beat-dot-accent' : ''}" id="beat-dot-${i}"></span>`;
+      }
+      row.innerHTML = html;
+    }
+
+    function lightBeat(beat) {
+      for (let i = 0; i < metronome.beatsPerBar; i++) {
+        const dot = document.getElementById(`beat-dot-${i}`);
+        if (dot) dot.classList.remove('beat-dot-lit');
+      }
+      if (beat === null) return;
+      const dot = document.getElementById(`beat-dot-${beat}`);
+      if (dot) dot.classList.add('beat-dot-lit');
+    }
+
     function playCurrentAudio() {
       if (currentSelectedNote && currentSelectedNote.freq) {
         playTone(currentSelectedNote.freq);
@@ -1215,6 +1412,7 @@
     // Window Onload Initialization
     window.onload = function() {
       buildPianoKeyboard();
+      buildBeatLights();
       updatePracticeDisplay();
       setTimeout(() => scrollKeyboardTo('C4'), 200);
     };

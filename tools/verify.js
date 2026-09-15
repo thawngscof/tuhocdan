@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -1064,6 +1064,23 @@ function fakeAudio() {
 const audio = fakeAudio();
 global.window.AudioContext = function () { return audio.ctx; };
 
+/* Count the metronome's wake-up timers, and unref them.
+ *
+ * Without this a metronome that forgets to clear its interval does not fail
+ * anything - the suite finishes and node simply never exits, which reads as a
+ * hang rather than as a failed check. Counting turns "the timer was left
+ * running" into something a check can state, and unref stops one stray timer
+ * from holding the whole run open. */
+let intervalsOpen = 0;
+const realSetInterval = global.setInterval, realClearInterval = global.clearInterval;
+global.setInterval = (fn, ms) => {
+  intervalsOpen++;
+  const handle = realSetInterval(fn, ms);
+  if (handle && typeof handle.unref === 'function') handle.unref();
+  return handle;
+};
+global.clearInterval = (handle) => { intervalsOpen--; return realClearInterval(handle); };
+
 // Run one scenario and hand back only what it did, with a guard: playTone
 // swallows exceptions, so a fake missing a method would otherwise look like
 // a pass with a stack trace scrolling past.
@@ -1203,6 +1220,204 @@ scenario(() => playTone(440, { at: 80 }));
 check('a note played without a voice id is not tracked at all',
       activeVoices.size === trackedBefore,
       'untracked notes are piling up in the live set and will never be cleared');
+
+/* ---- 17. the metronome --------------------------------------------------
+ * The scheduler is driven directly here rather than through its timer: what
+ * matters is that click times come off the audio clock, and a real interval
+ * would only add jitter and keep the process alive.
+ */
+
+// Put the metronome in a known state without starting its timer.
+const SCHEDULE_AHEAD_MAX = 0.12 + 1e-9;   // mirrors SCHEDULE_AHEAD in the page
+
+function armMetronome(bpm, beatsPerBar, from) {
+  metronome.running = true;
+  metronome.bpm = bpm;
+  metronome.beatsPerBar = beatsPerBar;
+  metronome.beat = 0;
+  metronome.nextBeatTime = from;
+  metronomeQueue.length = 0;
+}
+
+// Pair each click's oscillator with the gain that follows it.
+function clicksIn(nodes, events) {
+  const out = [];
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].kind !== 'oscillator') continue;
+    const osc = nodes[i], gain = nodes[i + 1];
+    const freq = events.find(e => e.id === osc.id && e.param === 'frequency');
+    const gains = events.filter(e => gain && e.id === gain.id && e.param === 'gain');
+    out.push({ osc, gain, freq: freq && freq.v, at: freq && freq.t, peak: Math.max(...gains.map(e => e.v)) });
+  }
+  return out;
+}
+
+/* 17a. the tempo range is enforced at both ends */
+
+for (const bpm of [40, 90, 208]) {
+  check(`${bpm} BPM is accepted`, setMetronomeBpm(bpm) === true && metronome.bpm === bpm);
+}
+for (const bpm of [39, 209, 0, -90, NaN, Infinity, '90', null]) {
+  const shown = typeof bpm === 'string' ? `"${bpm}"` : String(bpm);
+  const before = metronome.bpm;
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const took = setMetronomeBpm(bpm);
+  console.error = realErr;
+  check(`${shown} BPM is refused`, took === false && logged === 1 && metronome.bpm === before,
+        `returned ${took}, logged ${logged}x, bpm now ${metronome.bpm}`);
+}
+
+/* 17b. so is the bar length */
+
+check('a bar of 3 beats is accepted', setMetronomeBeatsPerBar(3) === true && metronome.beatsPerBar === 3);
+for (const beats of [1, 13, 2.5, '4']) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const took = setMetronomeBeatsPerBar(beats);
+  console.error = realErr;
+  check(`a bar of ${JSON.stringify(beats)} beats is refused`, took === false && logged === 1 && metronome.beatsPerBar === 3);
+}
+setMetronomeBeatsPerBar(4);
+
+/* 17c. beats land one tempo apart, off the audio clock ------------------
+ * A lookahead scheduler only ever places the beats inside its own short
+ * window, so the clock has to be walked forward the way its timer would.
+ * Calling it once and expecting a run of beats measures nothing.
+ */
+
+function runScheduler(from, seconds, stepMs) {
+  // Any step finer than the lookahead window works; the wake-up rate itself
+  // is not what is under test.
+  const step = (stepMs || 20) / 1000;
+  for (let t = from; t <= from + seconds + 1e-9; t += step) {
+    audio.ctx.currentTime = t;
+    metronomeScheduler();
+  }
+}
+
+audio.ctx.currentTime = 100;
+const sched120 = scenario(() => { armMetronome(120, 4, 100); runScheduler(100, 2); });
+const clicks120 = clicksIn(sched120.nodes, sched120.events);
+check('the scheduler raises no error', sched120.errors === 0);
+check('at 120 BPM the beats fall half a second apart',
+      clicks120.length >= 4 && clicks120.every((c, i) => i === 0 || Math.abs((c.at - clicks120[i - 1].at) - 0.5) < 1e-9),
+      `click times ${clicks120.map(c => c.at).join(', ')}`);
+
+const sched60 = scenario(() => { armMetronome(60, 4, 200); runScheduler(200, 3); });
+const clicks60 = clicksIn(sched60.nodes, sched60.events);
+check('halving the tempo doubles the gap between beats',
+      clicks60.length >= 2 && Math.abs((clicks60[1].at - clicks60[0].at) - 1) < 1e-9,
+      `gap ${clicks60.length >= 2 ? clicks60[1].at - clicks60[0].at : 'n/a'}`);
+check('a slower tempo means fewer beats over the same stretch',
+      clicks60.length < clicks120.length,
+      `60 BPM gave ${clicks60.length} beats, 120 BPM gave ${clicks120.length}`);
+
+/* 17d. nothing is scheduled in the past, nor further out than the window */
+
+const windowBreaches = [];
+const oneCall = scenario(() => {
+  armMetronome(600, 4, 300);
+  audio.ctx.currentTime = 300;
+  metronomeScheduler();
+});
+for (const c of clicksIn(oneCall.nodes, oneCall.events)) {
+  if (c.at < 300 - 1e-9) windowBreaches.push(`${c.at} is in the past`);
+  if (c.at >= 300 + SCHEDULE_AHEAD_MAX) windowBreaches.push(`${c.at} is beyond the lookahead window`);
+}
+check('one pass schedules only what falls inside the lookahead window',
+      windowBreaches.length === 0 && clicksIn(oneCall.nodes, oneCall.events).length > 0,
+      windowBreaches.join(', '));
+check('every click is scheduled at or after the time it was placed',
+      clicks120.every(c => c.at >= 100 - 1e-9),
+      'a click was scheduled in the past, which fires the moment it is queued');
+
+/* 17e. the first beat of the bar is the one you can hear */
+
+audio.ctx.currentTime = 400;
+const bar = scenario(() => { armMetronome(180, 3, 400); runScheduler(400, 2); });
+const barClicks = clicksIn(bar.nodes, bar.events);
+check('a bar of 3 gives at least one full cycle', barClicks.length >= 4, `${barClicks.length} click(s)`);
+check('the downbeat is pitched above the other beats',
+      barClicks[0].freq > barClicks[1].freq && barClicks[1].freq === barClicks[2].freq,
+      `pitches ${barClicks.slice(0, 4).map(c => c.freq).join(', ')}`);
+check('the downbeat is louder than the other beats',
+      barClicks[0].peak > barClicks[1].peak,
+      `peaks ${barClicks.slice(0, 3).map(c => c.peak).join(', ')}`);
+check('the accent comes back round at the top of the next bar',
+      Math.abs(barClicks[3].freq - barClicks[0].freq) < 1e-9 && Math.abs(barClicks[3].peak - barClicks[0].peak) < 1e-9,
+      `beat 4 of a 3-beat bar is pitched ${barClicks[3].freq}, the downbeat is ${barClicks[0].freq}`);
+check('a 4-beat bar accents one beat in four, not one in three',
+      (() => {
+        const four = scenario(() => { armMetronome(180, 4, 500); runScheduler(500, 2); });
+        const cs = clicksIn(four.nodes, four.events);
+        const top = cs[0].freq;
+        return cs.length >= 5 && cs[4].freq === top && cs[1].freq !== top && cs[3].freq !== top;
+      })());
+
+/* 17f. clicks share the same output chain as the notes */
+
+check('every click goes through the limiter, not straight to the speakers',
+      barClicks.every(c => c.gain && c.gain.out.includes(limiter)),
+      'a click bypasses the limiter');
+check('every click oscillator is stopped',
+      barClicks.every(c => c.osc.stopped.length === 1));
+
+/* 17g. the beat light follows the audio clock, and skips a backlog */
+
+armMetronome(120, 4, 600);
+scenario(() => runScheduler(600, 2));
+check('no beat is lit before its time has come', metronomeBeatAt(599.9) === null);
+check('the beat that has just passed is the one lit', metronomeBeatAt(600.0) === 0);
+check('a beat is only lit once', metronomeBeatAt(600.0) === null);
+check('a late frame lights the most recent beat, not a backlog of old ones',
+      metronomeBeatAt(601.6) === 3 && metronomeBeatAt(601.6) === null,
+      'the light is replaying beats it missed instead of catching up');
+
+/* 17h. starting and stopping */
+
+// The checks above armed the metronome by hand and left it marked as running,
+// which would make startMetronome return straight away and the whole lifecycle
+// pass on stale state. Put it back to a stopped metronome first.
+stopMetronome();
+audio.ctx.currentTime = 700;
+const started = scenario(() => startMetronome());
+check('starting the metronome raises no error', started.errors === 0);
+check('starting the metronome schedules its first clicks', metronomeQueue.length > 0);
+check('the first click is a downbeat', metronomeQueue[0].beat === 0);
+check('the first click is not scheduled in the past', metronomeQueue[0].at >= 700);
+check('starting sets a timer to keep looking ahead', metronome.timer !== null);
+
+const queuedBefore = metronomeQueue.length;
+startMetronome();
+check('starting an already running metronome changes nothing',
+      metronomeQueue.length === queuedBefore);
+
+stopMetronome();
+check('stopping clears the timer, the queue and the running flag',
+      metronome.timer === null && metronomeQueue.length === 0 && metronome.running === false);
+check('stopping leaves no wake-up timer behind', intervalsOpen === 0,
+      `${intervalsOpen} interval(s) still running - the metronome keeps ticking after Dừng`);
+
+// Walk the clock past the beat that was pending, or the scheduler would find
+// nothing due and look well-behaved whether or not it checks the running flag.
+audio.ctx.currentTime = 720;
+check('the scheduler does nothing once stopped',
+      scenario(() => metronomeScheduler()).nodes.length === 0,
+      'it is still laying down clicks after being stopped');
+
+/* 17i. the beat lights match the bar length */
+
+setMetronomeBeatsPerBar(3);
+const dots = (rendered['metronome-beats'] || '').match(/class="beat-dot[^"]*"/g) || [];
+check('the beat lights are rebuilt to match the bar length', dots.length === 3, `${dots.length} light(s)`);
+check('only the downbeat light is marked as the accent',
+      dots.filter(d => d.includes('beat-dot-accent')).length === 1 && dots[0].includes('beat-dot-accent'),
+      dots.join(' '));
+setMetronomeBeatsPerBar(4);
+stopMetronome();
 
 /* ---- summary ----------------------------------------------------------- */
 
