@@ -314,6 +314,7 @@
             <select id="quiz-range-select" onchange="startQuizNextQuestion()" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800">
               <option value="normal">Cơ Bản (Nốt Trong Khuông)</option>
               <option value="all">Toàn Bộ (Bao Gồm Dòng Kẻ Phụ)</option>
+              <option value="accidental">Nốt Thăng (#)</option>
             </select>
           </div>
         </div>
@@ -362,102 +363,159 @@
     // Comprehensive Notes Database Dictionary
     const notesData = {
       treble: [
-        { key: "g/3", step: -5, name: "Sol", noteName: "G3", desc: "Dưới Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol.", freq: 196.00, tag: "ledger" },
-        { key: "a/3", step: -4, name: "La", noteName: "A3", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol.", freq: 220.00, tag: "ledger" },
-        { key: "b/3", step: -3, name: "Si", noteName: "B3", desc: "Dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol.", freq: 246.94, tag: "ledger" },
-        { key: "c/4", step: -2, name: "Đô", noteName: "C4", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol (Đô Trung).", freq: 261.63, tag: "normal" },
-        { key: "d/4", step: -1, name: "Rê", noteName: "D4", desc: "Sát bên dưới Dòng kẻ thứ 1.", freq: 293.66, tag: "normal" },
-        { key: "e/4", step: 0, name: "Mi", noteName: "E4", desc: "Nằm ngay trên Dòng kẻ thứ 1.", freq: 329.63, tag: "normal" },
-        { key: "f/4", step: 1, name: "Pha", noteName: "F4", desc: "Nằm trong Khe thứ 1.", freq: 349.23, tag: "normal" },
-        { key: "g/4", step: 2, name: "Sol", noteName: "G4", desc: "Nằm ngay trên Dòng kẻ thứ 2 (Tâm điểm Khóa Sol).", freq: 392.00, tag: "normal" },
-        { key: "a/4", step: 3, name: "La", noteName: "A4", desc: "Nằm trong Khe thứ 2.", freq: 440.00, tag: "normal" },
-        { key: "b/4", step: 4, name: "Si", noteName: "B4", desc: "Nằm ngay trên Dòng kẻ thứ 3.", freq: 493.88, tag: "normal" },
-        { key: "c/5", step: 5, name: "Đô", noteName: "C5", desc: "Nằm trong Khe thứ 3 (Đô Cao).", freq: 523.25, tag: "normal" },
-        { key: "d/5", step: 6, name: "Rê", noteName: "D5", desc: "Nằm ngay trên Dòng kẻ thứ 4.", freq: 587.33, tag: "normal" },
-        { key: "e/5", step: 7, name: "Mi", noteName: "E5", desc: "Nằm trong Khe thứ 4.", freq: 659.25, tag: "normal" },
-        { key: "f/5", step: 8, name: "Pha", noteName: "F5", desc: "Nằm ngay trên Dòng kẻ thứ 5.", freq: 698.46, tag: "normal" },
-        { key: "g/5", step: 9, name: "Sol", noteName: "G5", desc: "Sát bên trên Dòng kẻ thứ 5.", freq: 783.99, tag: "ledger" },
-        { key: "a/5", step: 10, name: "La", noteName: "A5", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Sol.", freq: 880.00, tag: "ledger" },
-        { key: "b/5", step: 11, name: "Si", noteName: "B5", desc: "Sát bên trên Dòng kẻ phụ thứ 1.", freq: 987.77, tag: "ledger" },
-        { key: "c/6", step: 12, name: "Đô", noteName: "C6", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên trên khuông Khóa Sol.", freq: 1046.50, tag: "ledger" }
+        { key: "c/2", step: -16, name: "Đô", noteName: "C2", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 8 bên dưới khuông Khóa Sol.", freq: 65.41, tag: "ledger" },
+        { key: "c#/2", step: -16, name: "Đô thăng", noteName: "C#2", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 8 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 69.30, tag: "accidental" },
+        { key: "d/2", step: -15, name: "Rê", noteName: "D2", acc: null, desc: "Dưới Dòng kẻ phụ thứ 7 bên dưới khuông Khóa Sol.", freq: 73.42, tag: "ledger" },
+        { key: "d#/2", step: -15, name: "Rê thăng", noteName: "D#2", acc: "♯", desc: "Dưới Dòng kẻ phụ thứ 7 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 77.78, tag: "accidental" },
+        { key: "e/2", step: -14, name: "Mi", noteName: "E2", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 7 bên dưới khuông Khóa Sol.", freq: 82.41, tag: "ledger" },
+        { key: "f/2", step: -13, name: "Pha", noteName: "F2", acc: null, desc: "Dưới Dòng kẻ phụ thứ 6 bên dưới khuông Khóa Sol.", freq: 87.31, tag: "ledger" },
+        { key: "f#/2", step: -13, name: "Pha thăng", noteName: "F#2", acc: "♯", desc: "Dưới Dòng kẻ phụ thứ 6 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 92.50, tag: "accidental" },
+        { key: "g/2", step: -12, name: "Sol", noteName: "G2", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 6 bên dưới khuông Khóa Sol.", freq: 98.00, tag: "ledger" },
+        { key: "g#/2", step: -12, name: "Sol thăng", noteName: "G#2", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 6 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 103.83, tag: "accidental" },
+        { key: "a/2", step: -11, name: "La", noteName: "A2", acc: null, desc: "Dưới Dòng kẻ phụ thứ 5 bên dưới khuông Khóa Sol.", freq: 110.00, tag: "ledger" },
+        { key: "a#/2", step: -11, name: "La thăng", noteName: "A#2", acc: "♯", desc: "Dưới Dòng kẻ phụ thứ 5 bên dưới khuông Khóa Sol. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 116.54, tag: "accidental" },
+        { key: "b/2", step: -10, name: "Si", noteName: "B2", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 5 bên dưới khuông Khóa Sol.", freq: 123.47, tag: "ledger" },
+        { key: "c/3", step: -9, name: "Đô", noteName: "C3", acc: null, desc: "Dưới Dòng kẻ phụ thứ 4 bên dưới khuông Khóa Sol.", freq: 130.81, tag: "ledger" },
+        { key: "c#/3", step: -9, name: "Đô thăng", noteName: "C#3", acc: "♯", desc: "Dưới Dòng kẻ phụ thứ 4 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 138.59, tag: "accidental" },
+        { key: "d/3", step: -8, name: "Rê", noteName: "D3", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 4 bên dưới khuông Khóa Sol.", freq: 146.83, tag: "ledger" },
+        { key: "d#/3", step: -8, name: "Rê thăng", noteName: "D#3", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 4 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 155.56, tag: "accidental" },
+        { key: "e/3", step: -7, name: "Mi", noteName: "E3", acc: null, desc: "Dưới Dòng kẻ phụ thứ 3 bên dưới khuông Khóa Sol.", freq: 164.81, tag: "ledger" },
+        { key: "f/3", step: -6, name: "Pha", noteName: "F3", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 3 bên dưới khuông Khóa Sol.", freq: 174.61, tag: "ledger" },
+        { key: "f#/3", step: -6, name: "Pha thăng", noteName: "F#3", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 3 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 185.00, tag: "accidental" },
+        { key: "g/3", step: -5, name: "Sol", noteName: "G3", acc: null, desc: "Dưới Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol.", freq: 196.00, tag: "ledger" },
+        { key: "g#/3", step: -5, name: "Sol thăng", noteName: "G#3", acc: "♯", desc: "Dưới Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 207.65, tag: "accidental" },
+        { key: "a/3", step: -4, name: "La", noteName: "A3", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol.", freq: 220.00, tag: "ledger" },
+        { key: "a#/3", step: -4, name: "La thăng", noteName: "A#3", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Sol. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 233.08, tag: "accidental" },
+        { key: "b/3", step: -3, name: "Si", noteName: "B3", acc: null, desc: "Dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol.", freq: 246.94, tag: "ledger" },
+        { key: "c/4", step: -2, name: "Đô", noteName: "C4", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol — đây là Đô Trung (Middle C).", freq: 261.63, tag: "normal" },
+        { key: "c#/4", step: -2, name: "Đô thăng", noteName: "C#4", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Sol. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 277.18, tag: "accidental" },
+        { key: "d/4", step: -1, name: "Rê", noteName: "D4", acc: null, desc: "Sát bên dưới Dòng kẻ thứ 1 của Khóa Sol.", freq: 293.66, tag: "normal" },
+        { key: "d#/4", step: -1, name: "Rê thăng", noteName: "D#4", acc: "♯", desc: "Sát bên dưới Dòng kẻ thứ 1 của Khóa Sol. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 311.13, tag: "accidental" },
+        { key: "e/4", step: 0, name: "Mi", noteName: "E4", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 1 của Khóa Sol.", freq: 329.63, tag: "normal" },
+        { key: "f/4", step: 1, name: "Pha", noteName: "F4", acc: null, desc: "Nằm trong Khe thứ 1 của Khóa Sol.", freq: 349.23, tag: "normal" },
+        { key: "f#/4", step: 1, name: "Pha thăng", noteName: "F#4", acc: "♯", desc: "Nằm trong Khe thứ 1 của Khóa Sol. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 369.99, tag: "accidental" },
+        { key: "g/4", step: 2, name: "Sol", noteName: "G4", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 2 của Khóa Sol.", freq: 392.00, tag: "normal" },
+        { key: "g#/4", step: 2, name: "Sol thăng", noteName: "G#4", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 2 của Khóa Sol. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 415.30, tag: "accidental" },
+        { key: "a/4", step: 3, name: "La", noteName: "A4", acc: null, desc: "Nằm trong Khe thứ 2 của Khóa Sol.", freq: 440.00, tag: "normal" },
+        { key: "a#/4", step: 3, name: "La thăng", noteName: "A#4", acc: "♯", desc: "Nằm trong Khe thứ 2 của Khóa Sol. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 466.16, tag: "accidental" },
+        { key: "b/4", step: 4, name: "Si", noteName: "B4", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 3 của Khóa Sol.", freq: 493.88, tag: "normal" },
+        { key: "c/5", step: 5, name: "Đô", noteName: "C5", acc: null, desc: "Nằm trong Khe thứ 3 của Khóa Sol.", freq: 523.25, tag: "normal" },
+        { key: "c#/5", step: 5, name: "Đô thăng", noteName: "C#5", acc: "♯", desc: "Nằm trong Khe thứ 3 của Khóa Sol. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 554.37, tag: "accidental" },
+        { key: "d/5", step: 6, name: "Rê", noteName: "D5", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 4 của Khóa Sol.", freq: 587.33, tag: "normal" },
+        { key: "d#/5", step: 6, name: "Rê thăng", noteName: "D#5", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 4 của Khóa Sol. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 622.25, tag: "accidental" },
+        { key: "e/5", step: 7, name: "Mi", noteName: "E5", acc: null, desc: "Nằm trong Khe thứ 4 của Khóa Sol.", freq: 659.26, tag: "normal" },
+        { key: "f/5", step: 8, name: "Pha", noteName: "F5", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 5 của Khóa Sol.", freq: 698.46, tag: "normal" },
+        { key: "f#/5", step: 8, name: "Pha thăng", noteName: "F#5", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 5 của Khóa Sol. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 739.99, tag: "accidental" },
+        { key: "g/5", step: 9, name: "Sol", noteName: "G5", acc: null, desc: "Sát bên trên Dòng kẻ thứ 5 của Khóa Sol.", freq: 783.99, tag: "ledger" },
+        { key: "g#/5", step: 9, name: "Sol thăng", noteName: "G#5", acc: "♯", desc: "Sát bên trên Dòng kẻ thứ 5 của Khóa Sol. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 830.61, tag: "accidental" },
+        { key: "a/5", step: 10, name: "La", noteName: "A5", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Sol.", freq: 880.00, tag: "ledger" },
+        { key: "a#/5", step: 10, name: "La thăng", noteName: "A#5", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Sol. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 932.33, tag: "accidental" },
+        { key: "b/5", step: 11, name: "Si", noteName: "B5", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 1 bên trên khuông Khóa Sol.", freq: 987.77, tag: "ledger" },
+        { key: "c/6", step: 12, name: "Đô", noteName: "C6", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 2 bên trên khuông Khóa Sol.", freq: 1046.50, tag: "ledger" }
       ],
       bass: [
-        { key: "c/2", step: -4, name: "Đô", noteName: "C2", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Fa.", freq: 65.41, tag: "ledger" },
-        { key: "d/2", step: -3, name: "Rê", noteName: "D2", desc: "Sát bên dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa.", freq: 73.42, tag: "ledger" },
-        { key: "e/2", step: -2, name: "Mi", noteName: "E2", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa.", freq: 82.41, tag: "ledger" },
-        { key: "f/2", step: -1, name: "Pha", noteName: "F2", desc: "Sát bên dưới Dòng kẻ thứ 1 của Khóa Fa.", freq: 87.31, tag: "normal" },
-        { key: "g/2", step: 0, name: "Sol", noteName: "G2", desc: "Nằm ngay trên Dòng kẻ thứ 1 của Khóa Fa.", freq: 98.00, tag: "normal" },
-        { key: "a/2", step: 1, name: "La", noteName: "A2", desc: "Nằm trong Khe thứ 1 của Khóa Fa.", freq: 110.00, tag: "normal" },
-        { key: "b/2", step: 2, name: "Si", noteName: "B2", desc: "Nằm ngay trên Dòng kẻ thứ 2 của Khóa Fa.", freq: 123.47, tag: "normal" },
-        { key: "c/3", step: 3, name: "Đô", noteName: "C3", desc: "Nằm trong Khe thứ 2 của Khóa Fa.", freq: 130.81, tag: "normal" },
-        { key: "d/3", step: 4, name: "Rê", noteName: "D3", desc: "Nằm ngay trên Dòng kẻ thứ 3 của Khóa Fa.", freq: 146.83, tag: "normal" },
-        { key: "e/3", step: 5, name: "Mi", noteName: "E3", desc: "Nằm trong Khe thứ 3 của Khóa Fa.", freq: 164.81, tag: "normal" },
-        { key: "f/3", step: 6, name: "Pha", noteName: "F3", desc: "Nằm ngay trên Dòng kẻ thứ 4 (Tâm điểm Khóa Fa).", freq: 174.61, tag: "normal" },
-        { key: "g/3", step: 7, name: "Sol", noteName: "G3", desc: "Nằm trong Khe thứ 4 của Khóa Fa.", freq: 196.00, tag: "normal" },
-        { key: "a/3", step: 8, name: "La", noteName: "A3", desc: "Nằm ngay trên Dòng kẻ thứ 5 của Khóa Fa.", freq: 220.00, tag: "normal" },
-        { key: "b/3", step: 9, name: "Si", noteName: "B3", desc: "Sát bên trên Dòng kẻ thứ 5 của Khóa Fa.", freq: 246.94, tag: "normal" },
-        { key: "c/4", step: 10, name: "Đô", noteName: "C4", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Fa (Đô Trung).", freq: 261.63, tag: "ledger" },
-        { key: "d/4", step: 11, name: "Rê", noteName: "D4", desc: "Sát bên trên Dòng kẻ phụ thứ 1 bên trên Khóa Fa.", freq: 293.66, tag: "ledger" },
-        { key: "e/4", step: 12, name: "Mi", noteName: "E4", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên trên khuông Khóa Fa.", freq: 329.63, tag: "ledger" },
-        { key: "f/4", step: 13, name: "Pha", noteName: "F4", desc: "Sát bên trên Dòng kẻ phụ thứ 2 bên trên Khóa Fa.", freq: 349.23, tag: "ledger" }
+        { key: "c/2", step: -4, name: "Đô", noteName: "C2", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Fa.", freq: 65.41, tag: "ledger" },
+        { key: "c#/2", step: -4, name: "Đô thăng", noteName: "C#2", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 2 bên dưới khuông Khóa Fa. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 69.30, tag: "accidental" },
+        { key: "d/2", step: -3, name: "Rê", noteName: "D2", acc: null, desc: "Dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa.", freq: 73.42, tag: "ledger" },
+        { key: "d#/2", step: -3, name: "Rê thăng", noteName: "D#2", acc: "♯", desc: "Dưới Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 77.78, tag: "accidental" },
+        { key: "e/2", step: -2, name: "Mi", noteName: "E2", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 1 bên dưới khuông Khóa Fa.", freq: 82.41, tag: "ledger" },
+        { key: "f/2", step: -1, name: "Pha", noteName: "F2", acc: null, desc: "Sát bên dưới Dòng kẻ thứ 1 của Khóa Fa.", freq: 87.31, tag: "normal" },
+        { key: "f#/2", step: -1, name: "Pha thăng", noteName: "F#2", acc: "♯", desc: "Sát bên dưới Dòng kẻ thứ 1 của Khóa Fa. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 92.50, tag: "accidental" },
+        { key: "g/2", step: 0, name: "Sol", noteName: "G2", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 1 của Khóa Fa.", freq: 98.00, tag: "normal" },
+        { key: "g#/2", step: 0, name: "Sol thăng", noteName: "G#2", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 1 của Khóa Fa. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 103.83, tag: "accidental" },
+        { key: "a/2", step: 1, name: "La", noteName: "A2", acc: null, desc: "Nằm trong Khe thứ 1 của Khóa Fa.", freq: 110.00, tag: "normal" },
+        { key: "a#/2", step: 1, name: "La thăng", noteName: "A#2", acc: "♯", desc: "Nằm trong Khe thứ 1 của Khóa Fa. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 116.54, tag: "accidental" },
+        { key: "b/2", step: 2, name: "Si", noteName: "B2", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 2 của Khóa Fa.", freq: 123.47, tag: "normal" },
+        { key: "c/3", step: 3, name: "Đô", noteName: "C3", acc: null, desc: "Nằm trong Khe thứ 2 của Khóa Fa.", freq: 130.81, tag: "normal" },
+        { key: "c#/3", step: 3, name: "Đô thăng", noteName: "C#3", acc: "♯", desc: "Nằm trong Khe thứ 2 của Khóa Fa. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 138.59, tag: "accidental" },
+        { key: "d/3", step: 4, name: "Rê", noteName: "D3", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 3 của Khóa Fa.", freq: 146.83, tag: "normal" },
+        { key: "d#/3", step: 4, name: "Rê thăng", noteName: "D#3", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 3 của Khóa Fa. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 155.56, tag: "accidental" },
+        { key: "e/3", step: 5, name: "Mi", noteName: "E3", acc: null, desc: "Nằm trong Khe thứ 3 của Khóa Fa.", freq: 164.81, tag: "normal" },
+        { key: "f/3", step: 6, name: "Pha", noteName: "F3", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 4 của Khóa Fa.", freq: 174.61, tag: "normal" },
+        { key: "f#/3", step: 6, name: "Pha thăng", noteName: "F#3", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 4 của Khóa Fa. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 185.00, tag: "accidental" },
+        { key: "g/3", step: 7, name: "Sol", noteName: "G3", acc: null, desc: "Nằm trong Khe thứ 4 của Khóa Fa.", freq: 196.00, tag: "normal" },
+        { key: "g#/3", step: 7, name: "Sol thăng", noteName: "G#3", acc: "♯", desc: "Nằm trong Khe thứ 4 của Khóa Fa. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 207.65, tag: "accidental" },
+        { key: "a/3", step: 8, name: "La", noteName: "A3", acc: null, desc: "Nằm ngay trên Dòng kẻ thứ 5 của Khóa Fa.", freq: 220.00, tag: "normal" },
+        { key: "a#/3", step: 8, name: "La thăng", noteName: "A#3", acc: "♯", desc: "Nằm ngay trên Dòng kẻ thứ 5 của Khóa Fa. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 233.08, tag: "accidental" },
+        { key: "b/3", step: 9, name: "Si", noteName: "B3", acc: null, desc: "Sát bên trên Dòng kẻ thứ 5 của Khóa Fa.", freq: 246.94, tag: "normal" },
+        { key: "c/4", step: 10, name: "Đô", noteName: "C4", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Fa — đây là Đô Trung (Middle C).", freq: 261.63, tag: "ledger" },
+        { key: "c#/4", step: 10, name: "Đô thăng", noteName: "C#4", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 1 bên trên khuông Khóa Fa. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 277.18, tag: "accidental" },
+        { key: "d/4", step: 11, name: "Rê", noteName: "D4", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 1 bên trên khuông Khóa Fa.", freq: 293.66, tag: "ledger" },
+        { key: "d#/4", step: 11, name: "Rê thăng", noteName: "D#4", acc: "♯", desc: "Sát bên trên Dòng kẻ phụ thứ 1 bên trên khuông Khóa Fa. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 311.13, tag: "accidental" },
+        { key: "e/4", step: 12, name: "Mi", noteName: "E4", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 2 bên trên khuông Khóa Fa.", freq: 329.63, tag: "ledger" },
+        { key: "f/4", step: 13, name: "Pha", noteName: "F4", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 2 bên trên khuông Khóa Fa.", freq: 349.23, tag: "ledger" },
+        { key: "f#/4", step: 13, name: "Pha thăng", noteName: "F#4", acc: "♯", desc: "Sát bên trên Dòng kẻ phụ thứ 2 bên trên khuông Khóa Fa. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 369.99, tag: "accidental" },
+        { key: "g/4", step: 14, name: "Sol", noteName: "G4", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 3 bên trên khuông Khóa Fa.", freq: 392.00, tag: "ledger" },
+        { key: "g#/4", step: 14, name: "Sol thăng", noteName: "G#4", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 3 bên trên khuông Khóa Fa. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 415.30, tag: "accidental" },
+        { key: "a/4", step: 15, name: "La", noteName: "A4", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 3 bên trên khuông Khóa Fa.", freq: 440.00, tag: "ledger" },
+        { key: "a#/4", step: 15, name: "La thăng", noteName: "A#4", acc: "♯", desc: "Sát bên trên Dòng kẻ phụ thứ 3 bên trên khuông Khóa Fa. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 466.16, tag: "accidental" },
+        { key: "b/4", step: 16, name: "Si", noteName: "B4", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 4 bên trên khuông Khóa Fa.", freq: 493.88, tag: "ledger" },
+        { key: "c/5", step: 17, name: "Đô", noteName: "C5", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 4 bên trên khuông Khóa Fa.", freq: 523.25, tag: "ledger" },
+        { key: "c#/5", step: 17, name: "Đô thăng", noteName: "C#5", acc: "♯", desc: "Sát bên trên Dòng kẻ phụ thứ 4 bên trên khuông Khóa Fa. Cùng vị trí với nốt Đô, thêm dấu thăng (#) phía trước.", freq: 554.37, tag: "accidental" },
+        { key: "d/5", step: 18, name: "Rê", noteName: "D5", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 5 bên trên khuông Khóa Fa.", freq: 587.33, tag: "ledger" },
+        { key: "d#/5", step: 18, name: "Rê thăng", noteName: "D#5", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 5 bên trên khuông Khóa Fa. Cùng vị trí với nốt Rê, thêm dấu thăng (#) phía trước.", freq: 622.25, tag: "accidental" },
+        { key: "e/5", step: 19, name: "Mi", noteName: "E5", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 5 bên trên khuông Khóa Fa.", freq: 659.26, tag: "ledger" },
+        { key: "f/5", step: 20, name: "Pha", noteName: "F5", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 6 bên trên khuông Khóa Fa.", freq: 698.46, tag: "ledger" },
+        { key: "f#/5", step: 20, name: "Pha thăng", noteName: "F#5", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 6 bên trên khuông Khóa Fa. Cùng vị trí với nốt Pha, thêm dấu thăng (#) phía trước.", freq: 739.99, tag: "accidental" },
+        { key: "g/5", step: 21, name: "Sol", noteName: "G5", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 6 bên trên khuông Khóa Fa.", freq: 783.99, tag: "ledger" },
+        { key: "g#/5", step: 21, name: "Sol thăng", noteName: "G#5", acc: "♯", desc: "Sát bên trên Dòng kẻ phụ thứ 6 bên trên khuông Khóa Fa. Cùng vị trí với nốt Sol, thêm dấu thăng (#) phía trước.", freq: 830.61, tag: "accidental" },
+        { key: "a/5", step: 22, name: "La", noteName: "A5", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 7 bên trên khuông Khóa Fa.", freq: 880.00, tag: "ledger" },
+        { key: "a#/5", step: 22, name: "La thăng", noteName: "A#5", acc: "♯", desc: "Nằm ở Dòng kẻ phụ thứ 7 bên trên khuông Khóa Fa. Cùng vị trí với nốt La, thêm dấu thăng (#) phía trước.", freq: 932.33, tag: "accidental" },
+        { key: "b/5", step: 23, name: "Si", noteName: "B5", acc: null, desc: "Sát bên trên Dòng kẻ phụ thứ 7 bên trên khuông Khóa Fa.", freq: 987.77, tag: "ledger" },
+        { key: "c/6", step: 24, name: "Đô", noteName: "C6", acc: null, desc: "Nằm ở Dòng kẻ phụ thứ 8 bên trên khuông Khóa Fa.", freq: 1046.50, tag: "ledger" }
       ]
     };
 
     // Full Organ Keyboard Layout Data (C2 to C6 - 4 Octaves)
     const keyboardKeys = [
-      // Octave 2
       { key: "c/2", name: "Đô", noteName: "C2", type: "white", freq: 65.41 },
-      { key: "c#/2", name: "C#2", noteName: "C#2", type: "black", freq: 69.30, pos: 28 },
+      { key: "c#/2", name: "Đô thăng", noteName: "C#2", type: "black", freq: 69.30, pos: 28 },
       { key: "d/2", name: "Rê", noteName: "D2", type: "white", freq: 73.42 },
-      { key: "eb/2", name: "D#2", noteName: "Eb2", type: "black", freq: 77.78, pos: 72 },
+      { key: "d#/2", name: "Rê thăng", noteName: "D#2", type: "black", freq: 77.78, pos: 72 },
       { key: "e/2", name: "Mi", noteName: "E2", type: "white", freq: 82.41 },
       { key: "f/2", name: "Pha", noteName: "F2", type: "white", freq: 87.31 },
-      { key: "f#/2", name: "F#2", noteName: "F#2", type: "black", freq: 92.50, pos: 160 },
+      { key: "f#/2", name: "Pha thăng", noteName: "F#2", type: "black", freq: 92.50, pos: 160 },
       { key: "g/2", name: "Sol", noteName: "G2", type: "white", freq: 98.00 },
-      { key: "g#/2", name: "G#2", noteName: "G#2", type: "black", freq: 103.83, pos: 204 },
+      { key: "g#/2", name: "Sol thăng", noteName: "G#2", type: "black", freq: 103.83, pos: 204 },
       { key: "a/2", name: "La", noteName: "A2", type: "white", freq: 110.00 },
-      { key: "bb/2", name: "A#2", noteName: "Bb2", type: "black", freq: 116.54, pos: 248 },
+      { key: "a#/2", name: "La thăng", noteName: "A#2", type: "black", freq: 116.54, pos: 248 },
       { key: "b/2", name: "Si", noteName: "B2", type: "white", freq: 123.47 },
-      // Octave 3
       { key: "c/3", name: "Đô", noteName: "C3", type: "white", freq: 130.81 },
-      { key: "c#/3", name: "C#3", noteName: "C#3", type: "black", freq: 138.59, pos: 336 },
+      { key: "c#/3", name: "Đô thăng", noteName: "C#3", type: "black", freq: 138.59, pos: 336 },
       { key: "d/3", name: "Rê", noteName: "D3", type: "white", freq: 146.83 },
-      { key: "eb/3", name: "D#3", noteName: "Eb3", type: "black", freq: 155.56, pos: 380 },
+      { key: "d#/3", name: "Rê thăng", noteName: "D#3", type: "black", freq: 155.56, pos: 380 },
       { key: "e/3", name: "Mi", noteName: "E3", type: "white", freq: 164.81 },
       { key: "f/3", name: "Pha", noteName: "F3", type: "white", freq: 174.61 },
-      { key: "f#/3", name: "F#3", noteName: "F#3", type: "black", freq: 185.00, pos: 468 },
+      { key: "f#/3", name: "Pha thăng", noteName: "F#3", type: "black", freq: 185.00, pos: 468 },
       { key: "g/3", name: "Sol", noteName: "G3", type: "white", freq: 196.00 },
-      { key: "g#/3", name: "G#3", noteName: "G#3", type: "black", freq: 207.65, pos: 512 },
+      { key: "g#/3", name: "Sol thăng", noteName: "G#3", type: "black", freq: 207.65, pos: 512 },
       { key: "a/3", name: "La", noteName: "A3", type: "white", freq: 220.00 },
-      { key: "bb/3", name: "A#3", noteName: "Bb3", type: "black", freq: 233.08, pos: 556 },
+      { key: "a#/3", name: "La thăng", noteName: "A#3", type: "black", freq: 233.08, pos: 556 },
       { key: "b/3", name: "Si", noteName: "B3", type: "white", freq: 246.94 },
-      // Octave 4
       { key: "c/4", name: "Đô", noteName: "C4", type: "white", freq: 261.63 },
-      { key: "c#/4", name: "C#4", noteName: "C#4", type: "black", freq: 277.18, pos: 644 },
+      { key: "c#/4", name: "Đô thăng", noteName: "C#4", type: "black", freq: 277.18, pos: 644 },
       { key: "d/4", name: "Rê", noteName: "D4", type: "white", freq: 293.66 },
-      { key: "eb/4", name: "D#4", noteName: "Eb4", type: "black", freq: 311.13, pos: 688 },
+      { key: "d#/4", name: "Rê thăng", noteName: "D#4", type: "black", freq: 311.13, pos: 688 },
       { key: "e/4", name: "Mi", noteName: "E4", type: "white", freq: 329.63 },
       { key: "f/4", name: "Pha", noteName: "F4", type: "white", freq: 349.23 },
-      { key: "f#/4", name: "F#4", noteName: "F#4", type: "black", freq: 369.99, pos: 776 },
+      { key: "f#/4", name: "Pha thăng", noteName: "F#4", type: "black", freq: 369.99, pos: 776 },
       { key: "g/4", name: "Sol", noteName: "G4", type: "white", freq: 392.00 },
-      { key: "g#/4", name: "G#4", noteName: "G#4", type: "black", freq: 415.30, pos: 820 },
+      { key: "g#/4", name: "Sol thăng", noteName: "G#4", type: "black", freq: 415.30, pos: 820 },
       { key: "a/4", name: "La", noteName: "A4", type: "white", freq: 440.00 },
-      { key: "bb/4", name: "A#4", noteName: "Bb4", type: "black", freq: 466.16, pos: 864 },
+      { key: "a#/4", name: "La thăng", noteName: "A#4", type: "black", freq: 466.16, pos: 864 },
       { key: "b/4", name: "Si", noteName: "B4", type: "white", freq: 493.88 },
-      // Octave 5
       { key: "c/5", name: "Đô", noteName: "C5", type: "white", freq: 523.25 },
-      { key: "c#/5", name: "C#5", noteName: "C#5", type: "black", freq: 554.37, pos: 952 },
+      { key: "c#/5", name: "Đô thăng", noteName: "C#5", type: "black", freq: 554.37, pos: 952 },
       { key: "d/5", name: "Rê", noteName: "D5", type: "white", freq: 587.33 },
-      { key: "eb/5", name: "D#5", noteName: "Eb5", type: "black", freq: 622.25, pos: 996 },
-      { key: "e/5", name: "Mi", noteName: "E5", type: "white", freq: 659.25 },
+      { key: "d#/5", name: "Rê thăng", noteName: "D#5", type: "black", freq: 622.25, pos: 996 },
+      { key: "e/5", name: "Mi", noteName: "E5", type: "white", freq: 659.26 },
       { key: "f/5", name: "Pha", noteName: "F5", type: "white", freq: 698.46 },
-      { key: "f#/5", name: "F#5", noteName: "F#5", type: "black", freq: 739.99, pos: 1084 },
+      { key: "f#/5", name: "Pha thăng", noteName: "F#5", type: "black", freq: 739.99, pos: 1084 },
       { key: "g/5", name: "Sol", noteName: "G5", type: "white", freq: 783.99 },
-      { key: "g#/5", name: "G#5", noteName: "G#5", type: "black", freq: 830.61, pos: 1128 },
+      { key: "g#/5", name: "Sol thăng", noteName: "G#5", type: "black", freq: 830.61, pos: 1128 },
       { key: "a/5", name: "La", noteName: "A5", type: "white", freq: 880.00 },
-      { key: "bb/5", name: "A#5", noteName: "Bb5", type: "black", freq: 932.33, pos: 1172 },
+      { key: "a#/5", name: "La thăng", noteName: "A#5", type: "black", freq: 932.33, pos: 1172 },
       { key: "b/5", name: "Si", noteName: "B5", type: "white", freq: 987.77 },
-      // Octave 6
       { key: "c/6", name: "Đô", noteName: "C6", type: "white", freq: 1046.50 }
     ];
 
@@ -479,7 +537,11 @@
       const startX = 65;
       const lineY1 = topMargin + 4 * lineSpacing; // Bottom line (Line 1)
       
-      let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" class="select-none">`;
+      // Vertical extent actually drawn; the viewBox is fitted to it at the end so
+      // notes far above/below the staff (C2, C6) stay visible instead of clipping.
+      let minY = topMargin, maxY = lineY1;
+      const seen = (y) => { if (y < minY) minY = y; if (y > maxY) maxY = y; };
+      let svg = '';
 
       // Draw 5 Staff Lines
       for (let i = 0; i < 5; i++) {
@@ -508,7 +570,12 @@
       const noteSpacing = totalNotes > 1 ? availWidth / (totalNotes - 0.5) : availWidth / 2;
 
       notesArray.forEach((item, idx) => {
-        const noteData = notesData[clef].find(n => n.key === item.key) || { step: 0, name: 'Note' };
+        const noteData = notesData[clef].find(n => n.key === item.key);
+        if (!noteData) {
+          // Never guess a position: a wrong notehead teaches the wrong thing.
+          console.error(`renderScoreSVG: no "${clef}" entry for key "${item.key}" - skipped.`);
+          return;
+        }
         const step = noteData.step;
         
         // Y position relative to Line 1 (lineY1)
@@ -517,15 +584,17 @@
 
         // Dynamic Lower Ledger Lines (step <= -2)
         if (step <= -2) {
-          for (let lStep = -2; lStep >= step - (Math.abs(step) % 2 === 1 ? 1 : 0); lStep -= 2) {
+          for (let lStep = -2; lStep >= step; lStep -= 2) {
             const ledgerY = lineY1 - lStep * (lineSpacing / 2);
+            seen(ledgerY);
             svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
           }
         } 
         // Dynamic Upper Ledger Lines (step >= 10)
         else if (step >= 10) {
-          for (let uStep = 10; uStep <= step + (step % 2 === 1 ? 1 : 0); uStep += 2) {
+          for (let uStep = 10; uStep <= step; uStep += 2) {
             const ledgerY = lineY1 - uStep * (lineSpacing / 2);
+            seen(ledgerY);
             svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
           }
         }
@@ -545,6 +614,7 @@
         const stemUp = step <= 4;
         const stemX = stemUp ? noteX + 5.5 : noteX - 5.5;
         const stemY2 = stemUp ? noteY - 26 : noteY + 26;
+        seen(noteY); seen(stemY2);
         svg += `<line x1="${stemX}" y1="${noteY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
 
         // Draw Annotation Label if provided
@@ -553,8 +623,11 @@
         }
       });
 
-      svg += `</svg>`;
-      container.innerHTML = svg;
+      const vbTop = Math.min(0, minY - 14);
+      const vbBottom = Math.max(height, maxY + 14);
+      container.innerHTML = `<svg width="${width}" height="${height}" viewBox="0 ${vbTop} ${width} ${vbBottom - vbTop}" `
+        + `preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="select-none">`
+        + svg + `</svg>`;
     }
 
     // Render Piano Keyboard Elements
@@ -579,8 +652,10 @@
 
     // Scroll keyboard to specific octave position
     function scrollKeyboardTo(noteNamePrefix) {
-      const targetEl = document.getElementById(`key-${noteNamePrefix.toLowerCase()}_${noteNamePrefix.slice(-1)}`) || 
-                       document.getElementById(`key-${noteNamePrefix.toLowerCase()}`);
+      // ids are built as `key-<letter>_<octave>` (see buildPianoKeyboard)
+      const letter = noteNamePrefix.slice(0, -1).toLowerCase();
+      const octave = noteNamePrefix.slice(-1);
+      const targetEl = document.getElementById(`key-${letter}_${octave}`);
       const container = document.getElementById('keyboard-scroll-container');
       if (targetEl && container) {
         container.scrollTo({
@@ -628,13 +703,7 @@
 
     // Handle Piano Key Clicks
     function handleKeyClick(key) {
-      let match = notesData[currentClef].find(n => n.key === key);
-      if (!match) {
-        const kData = keyboardKeys.find(k => k.key === key);
-        if (kData) {
-          match = { key: kData.key, step: 0, name: kData.name, noteName: kData.noteName, desc: `Nốt ${kData.name} (${kData.noteName})`, freq: kData.freq };
-        }
-      }
+      const match = notesData[currentClef].find(n => n.key === key);
 
       if (match) {
         currentSelectedNote = match;
@@ -748,6 +817,10 @@
       let pool = notesData[activeClef];
       if (rangeSelect === 'normal') {
         pool = pool.filter(n => n.tag === 'normal');
+      } else if (rangeSelect === 'accidental') {
+        pool = pool.filter(n => n.tag === 'accidental');
+      } else {
+        pool = pool.filter(n => n.tag !== 'accidental'); // naturals, ledger lines included
       }
 
       const randomNote = pool[Math.floor(Math.random() * pool.length)];
@@ -761,7 +834,7 @@
 
       // Create 4 Choices
       let options = [randomNote];
-      const fullList = notesData[activeClef];
+      const fullList = pool; // distractors must come from the same range as the question
       while (options.length < 4) {
         const randOpt = fullList[Math.floor(Math.random() * fullList.length)];
         if (!options.some(o => o.key === randOpt.key)) {
