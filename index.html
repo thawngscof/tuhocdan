@@ -828,6 +828,15 @@
     };
     const DEFAULT_DUR = 'q';
 
+    // What one item is worth, in quarter-note beats. A dot adds half again -
+    // that is the whole of what a dot means. Bar grouping, playback and the
+    // song tables all ask here, so a dotted note cannot be worth one thing in
+    // the bars and another in the ears.
+    function itemBeats(item) {
+      const shape = DURATIONS[item.dur || DEFAULT_DUR] || DURATIONS[DEFAULT_DUR];
+      return item.dot ? shape.beats * 1.5 : shape.beats;
+    }
+
     // Fingering runs 1 (ngón cái) to 5 (ngón út) on each hand. Anything else is
     // a mistake in the passage, not a number to draw.
     const isFingerNumber = (n) => Number.isInteger(n) && n >= 1 && n <= 5;
@@ -951,7 +960,6 @@
       const availWidth = width - startX - 35;
       const noteSpacing = totalNotes > 1 ? availWidth / (totalNotes - 0.5) : availWidth / 2;
       const xOf = (idx) => startX + idx * noteSpacing + 20;
-      const beatsOf = (item) => (DURATIONS[item.dur || DEFAULT_DUR] || DURATIONS[DEFAULT_DUR]).beats;
 
       // Fill one bar at a time until it is full, then start the next. A bar that
       // does not add up is a mistake in the passage, not something to paper
@@ -962,7 +970,7 @@
         let bar = { start: 0, beats: 0 };
         notesArray.forEach((item, idx) => {
           if (bar.beats >= meter.capacity - 1e-9) { bars.push(bar); bar = { start: idx, beats: 0 }; }
-          bar.beats += beatsOf(item);
+          bar.beats += itemBeats(item);
         });
         bars.push(bar);
 
@@ -1081,6 +1089,18 @@
           }
         }
 
+        // The dot goes to the right of the notehead. A note sitting on a line
+        // has no room there, so its dot moves up into the space above - which
+        // is where an engraver puts it too.
+        if (item.dot) {
+          for (let i = 0; i < stack.length; i++) {
+            const onLine = steps[i] % 2 === 0;
+            const dotY = yOfStep(steps[i]) - (onLine ? lineSpacing / 2 : 0);
+            seen(dotY);
+            svg += `<circle cx="${noteX + 12}" cy="${dotY}" r="2.2" fill="${INK}"/>`;
+          }
+        }
+
         // Draw Stem (down if the note sits high on the staff, up if low). It
         // runs from the notehead at one end of the stack to past the other.
         if (shape.stem) {
@@ -1099,6 +1119,28 @@
             svg += `<path d="M ${stemX} ${tipY} `
                  + `c 7 ${flagDir * 3}, 10 ${flagDir * 9}, 7 ${flagDir * 16} `
                  + `c 1 ${flagDir * -7}, -3 ${flagDir * -11}, -7 ${flagDir * -13} z" fill="#0f172a"/>`;
+          }
+        }
+
+        // A tie joins this note to the next one at the same pitch: they sound
+        // as one longer note. A curve between two different pitches is a slur,
+        // which means something else entirely, so that is refused.
+        if (item.tie) {
+          const next = notesArray[idx + 1];
+          if (!next) {
+            console.error('renderScoreSVG: the last note is tied to nothing.');
+          } else if (next.rest) {
+            console.error('renderScoreSVG: a note cannot be tied to a rest.');
+          } else if ((next.key || (next.keys || [])[0]) !== (item.key || stackKeys[0])) {
+            console.error(`renderScoreSVG: "${item.key}" is tied to "${next.key}" - a tie joins the same pitch, a curve between different ones is a slur.`);
+          } else {
+            const tieY = yOfStep(lowStep);
+            const bow = stemUp ? 12 : -12;         // arc away from the stems
+            const endX = xOf(idx + 1);
+            seen(tieY + bow);
+            svg += `<path d="M ${noteX + 7} ${tieY + (stemUp ? 4 : -4)} `
+                 + `Q ${(noteX + endX) / 2} ${tieY + bow}, ${endX - 7} ${tieY + (stemUp ? 4 : -4)}" `
+                 + `fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
           }
         }
 
@@ -1418,7 +1460,7 @@
       const secPerBeat = 60 / bpm;
       let at = startAt;
       return items.map((item, index) => {
-        const beats = (DURATIONS[item.dur || DEFAULT_DUR] || DURATIONS[DEFAULT_DUR]).beats;
+        const beats = itemBeats(item);
         const entry = { index, item, at, seconds: beats * secPerBeat };
         at += entry.seconds;
         return entry;
@@ -1445,8 +1487,24 @@
       player.schedule = schedule.map(e => ({ ...e, index: e.index + fromIndex }));
       player.queue = [];
 
+      // A tied note and the one it is tied to are a single sound. Roll the
+      // second one's length into the first and let it pass in silence, rather
+      // than re-striking the same pitch in the middle of a held note.
+      const tiedInto = new Set();
+      player.schedule.forEach((entry, i) => {
+        if (tiedInto.has(entry.index)) return;      // already rolled into an earlier note
+        let j = i;
+        while (player.schedule[j].item.tie) {
+          const next = player.schedule[j + 1];
+          if (!next || next.item.rest || next.item.key !== player.schedule[j].item.key) break;
+          entry.seconds += next.seconds;
+          tiedInto.add(next.index);
+          j++;
+        }
+      });
+
       for (const entry of player.schedule) {
-        if (entry.item.rest) { player.queue.push({ index: entry.index, at: entry.at, key: null }); continue; }
+        if (entry.item.rest || tiedInto.has(entry.index)) { player.queue.push({ index: entry.index, at: entry.at, key: null }); continue; }
         const note = notesData[player.clef].find(n => n.key === entry.item.key);
         if (!note) {
           // Same rule as the staff: refuse to guess. The silence is audible,
@@ -1460,6 +1518,9 @@
         player.queue.push({ index: entry.index, at: entry.at, key: entry.item.key });
       }
 
+      // A tie lengthens a note by exactly the length of the one it swallows, so
+      // it finishes where that note would have finished. The last entry is
+      // therefore still the furthest, tie or no tie.
       const last = player.schedule[player.schedule.length - 1];
       player.endsAt = last ? last.at + last.seconds : ctx.currentTime;
     }
@@ -2117,19 +2178,15 @@
         title: 'Khúc Hoan Ca',
         origin: 'Beethoven, "Ode an die Freude" (1824) — phạm vi công cộng',
         clef: 'treble', timeSig: '4/4', barsPerPhrase: 2,
-        // The two cadences are written as quarter-quarter-half. Beethoven set
-        // them dotted quarter, eighth, half; dotted notes are T15, so this is a
-        // simplification and is flagged as one rather than quietly passed off.
-        simplified: 'Hai chỗ kết được giản lược thành đen–đen–trắng; bản gốc là đen chấm dôi–móc đơn–trắng (chấm dôi thuộc T15).',
         notes: [
           { key: 'e/4' }, { key: 'e/4' }, { key: 'f/4' }, { key: 'g/4' },
           { key: 'g/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'd/4' },
           { key: 'c/4' }, { key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' },
-          { key: 'e/4' }, { key: 'd/4' }, { key: 'd/4', dur: 'h' },
+          { key: 'e/4', dot: true }, { key: 'd/4', dur: 'e' }, { key: 'd/4', dur: 'h' },
           { key: 'e/4' }, { key: 'e/4' }, { key: 'f/4' }, { key: 'g/4' },
           { key: 'g/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'd/4' },
           { key: 'c/4' }, { key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' },
-          { key: 'd/4' }, { key: 'c/4' }, { key: 'c/4', dur: 'h' },
+          { key: 'd/4', dot: true }, { key: 'c/4', dur: 'e' }, { key: 'c/4', dur: 'h' },
         ],
       },
     ];
@@ -2143,7 +2200,7 @@
       let beats = 0;
       song.notes.forEach((item, i) => {
         if (beats % capacity < 1e-9) starts.push(i);
-        beats += DURATIONS[item.dur || DEFAULT_DUR].beats;
+        beats += itemBeats(item);
       });
       return { starts, capacity, beats };
     }

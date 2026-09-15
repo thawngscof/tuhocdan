@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -153,6 +153,11 @@ function pathYs(d) {
     } else if (letter === 'C') {
       const x1 = num(), y1 = num(), x2 = num(), y2 = num(), ex = num(), ey = num();
       ys.push(rel ? y + y1 : y1, rel ? y + y2 : y2, rel ? y + ey : ey);
+      x = rel ? x + ex : ex;
+      y = rel ? y + ey : ey;
+    } else if (letter === 'Q') {
+      const x1 = num(), y1 = num(), ex = num(), ey = num();
+      ys.push(rel ? y + y1 : y1, rel ? y + ey : ey);
       x = rel ? x + ex : ex;
       y = rel ? y + ey : ey;
     } else {
@@ -2157,8 +2162,13 @@ const simplified = SONGS.filter(s => s.simplified);
 check('any song that departs from the original admits it in writing',
       simplified.every(s => s.simplified.length > 20),
       'a `simplified` note is too thin to be useful');
-check('Khúc Hoan Ca is flagged as simplified, since it is',
-      Boolean(SONGS.find(s => s.id === 'khuc-hoan-ca').simplified));
+// T15 brought dotted notes, so the Ode to Joy cadence no longer has to be
+// flattened and no longer carries a `simplified` note.
+const ode = SONGS.find(s => s.id === 'khuc-hoan-ca');
+check('Khúc Hoan Ca no longer needs a simplification note', !ode.simplified);
+check("Khúc Hoan Ca uses Beethoven's dotted cadence",
+      ode.notes.filter(n => n.dot).length === 2 && ode.notes.filter(n => n.dur === 'e').length === 2,
+      `${ode.notes.filter(n => n.dot).length} dotted note(s), ${ode.notes.filter(n => n.dur === 'e').length} eighth(s)`);
 
 /* 22c. choosing and playing */
 
@@ -2389,6 +2399,176 @@ lesson2.quiz.forEach((item, qi) =>
 check('getting one question wrong does not finish the lesson',
       !loadProgress().done.includes(2), 'the lesson was marked done on a wrong answer');
 resetProgress();
+
+/* ---- 24. dotted notes and ties ------------------------------------------
+ * A dot means one thing - half again - and everything that counts beats has
+ * to agree about it, or a passage divides into bars one way and sounds
+ * another.
+ */
+
+const DOTTED = [['w', 6], ['h', 3], ['q', 1.5], ['e', 0.75]];
+for (const [dur, want] of DOTTED) {
+  check(`a dotted ${DURATIONS[dur].name} is worth ${want} beats`,
+        itemBeats({ dur, dot: true }) === want, `${itemBeats({ dur, dot: true })}`);
+  check(`an undotted ${DURATIONS[dur].name} is unaffected`,
+        itemBeats({ dur }) === DURATIONS[dur].beats);
+}
+check('a dot on an item with no duration dots a quarter note', itemBeats({ dot: true }) === 1.5);
+check('a dotted rest is worth the same as a dotted note',
+      itemBeats({ rest: true, dur: 'h', dot: true }) === 3);
+
+/* 24a. the dot is drawn, and only when asked for */
+
+const dotsIn = (svg) => (svg.match(/<circle cx="[-\d.]+" cy="[-\d.]+" r="2\.2"/g) || []).length;
+renderScoreSVG('probe', [{ key: 'g/4' }], 'treble', 340, 160);
+check('a plain note draws no dot', dotsIn(rendered.probe) === 0);
+renderScoreSVG('probe', [{ key: 'g/4', dot: true }], 'treble', 340, 160);
+check('a dotted note draws one dot', dotsIn(rendered.probe) === 1);
+renderScoreSVG('probe', [{ keys: ['c/3', 'e/3', 'g/3'], dot: true }], 'bass', 340, 160);
+check('a dotted chord dots every note in the stack', dotsIn(rendered.probe) === 3);
+
+const dotAt = (svg) => {
+  const m = /<circle cx="([-\d.]+)" cy="([-\d.]+)" r="2\.2"/.exec(svg);
+  return m ? { x: +m[1], y: +m[2] } : null;
+};
+const headAt = (svg) => {
+  const m = /translate\(([-\d.]+), ([-\d.]+)\) rotate/.exec(svg);
+  return m ? { x: +m[1], y: +m[2] } : null;
+};
+
+// b/4 sits on a line in the treble clef, a/4 in a space.
+const onLine = notesData.treble.find(n => n.step % 2 === 0 && n.step >= 0 && n.step <= 8);
+const inSpace = notesData.treble.find(n => n.step % 2 === 1 && n.step >= 0 && n.step <= 8);
+
+renderScoreSVG('probe', [{ key: inSpace.key, dot: true }], 'treble', 340, 160);
+const spaceDot = dotAt(rendered.probe), spaceHead = headAt(rendered.probe);
+check('a note in a space keeps its dot level with the notehead',
+      Math.abs(spaceDot.y - spaceHead.y) < 0.01 && spaceDot.x > spaceHead.x,
+      `dot at ${JSON.stringify(spaceDot)}, notehead at ${JSON.stringify(spaceHead)}`);
+
+renderScoreSVG('probe', [{ key: onLine.key, dot: true }], 'treble', 340, 160);
+const lineDot = dotAt(rendered.probe), lineHead = headAt(rendered.probe);
+check('a note on a line lifts its dot into the space above',
+      Math.abs(lineDot.y - (lineHead.y - 5)) < 0.01 && lineDot.x > lineHead.x,
+      `dot at y=${lineDot.y}, notehead at y=${lineHead.y}`);
+
+const dotClipped = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    for (const dur of ['w', 'h', 'q', 'e']) {
+      renderScoreSVG('probe', [{ key: note.key, dur, dot: true }], clef, 340, 160);
+      const clip = clipReport(rendered.probe);
+      if (clip) dotClipped.push(`${clef} ${note.noteName} ${dur}: ${clip}`);
+    }
+  }
+}
+check('a dot never falls outside the fitted viewBox', dotClipped.length === 0,
+      dotClipped.slice(0, 3).join('\n        '));
+
+/* 24b. bars count a dotted note as what it is worth */
+
+const dottedBar = [{ key: 'c/4', dur: 'h', dot: true }, { key: 'c/4' }];   // 3 + 1 = 4
+const dottedComplaints = [];
+let realWarn = console.warn;
+console.warn = (m) => dottedComplaints.push(m);
+renderScoreSVG('probe', dottedBar, 'treble', 340, 160, '4/4');
+console.warn = realWarn;
+check('a dotted half and a quarter fill a bar of 4/4', dottedComplaints.length === 0,
+      dottedComplaints.join('; '));
+
+const wrongBar = [];
+console.warn = (m) => wrongBar.push(m);
+renderScoreSVG('probe', [{ key: 'c/4', dur: 'h' }, { key: 'c/4' }], 'treble', 340, 160, '4/4');
+console.warn = realWarn;
+check('without the dot the same bar comes up short', wrongBar.length === 1);
+
+/* 24c. a tie joins two notes of the same pitch */
+
+const tiesIn = (svg) => (svg.match(/<path d="M [^"]*Q [^"]*" fill="none" stroke="#0f172a" stroke-width="1\.6"/g) || []).length;
+
+renderScoreSVG('probe', [{ key: 'g/4', tie: true }, { key: 'g/4' }], 'treble', 340, 160);
+check('a tie draws one curve between the two notes', tiesIn(rendered.probe) === 1);
+renderScoreSVG('probe', [{ key: 'g/4' }, { key: 'g/4' }], 'treble', 340, 160);
+check('two notes with no tie draw no curve', tiesIn(rendered.probe) === 0);
+
+renderScoreSVG('probe', [{ key: 'g/4', tie: true }, { key: 'g/4' }], 'treble', 340, 160);
+const tieCurve = /<path d="M ([-\d.]+) [-\d.]+ Q ([-\d.]+) [-\d.]+, ([-\d.]+) [-\d.]+"/.exec(rendered.probe);
+const tieHeads = [...rendered.probe.matchAll(/translate\(([-\d.]+), [-\d.]+\) rotate/g)].map(m => +m[1]);
+check('the tie runs from the first notehead to the second',
+      +tieCurve[1] > tieHeads[0] && +tieCurve[3] < tieHeads[1]
+        && +tieCurve[2] > tieHeads[0] && +tieCurve[2] < tieHeads[1],
+      `curve ${tieCurve[1]} → ${tieCurve[3]}, noteheads at ${tieHeads.join(', ')}`);
+
+for (const [label, items] of [
+  ['a tie on the last note', [{ key: 'g/4', tie: true }]],
+  ['a note tied to a rest', [{ key: 'g/4', tie: true }, { rest: true }]],
+  ['a tie between two different pitches', [{ key: 'g/4', tie: true }, { key: 'a/4' }]],
+]) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  renderScoreSVG('probe', items, 'treble', 340, 160);
+  console.error = realErr;
+  check(`${label} is refused`, logged === 1 && tiesIn(rendered.probe) === 0,
+        `console.error called ${logged}x, ${tiesIn(rendered.probe)} curve(s) drawn`);
+}
+
+/* 24d. tied notes sound as one */
+
+const TIED = [{ key: 'c/4', dur: 'h', tie: true }, { key: 'c/4', dur: 'h' }, { key: 'd/4' }];
+audio.ctx.currentTime = 5000;
+setPlaybackBpm(120);
+const tiedPlay = scenario(() => playSequence(TIED, { clef: 'treble', bpm: 120 }));
+const tiedVoices = tiedPlay.nodes.filter(n => n.kind === 'oscillator');
+check('a tied pair is struck once, not twice',
+      tiedVoices.length === 2, `${tiedVoices.length} note(s) for a tied pair plus one more`);
+check('the tied note is held for both halves',
+      Math.abs(player.schedule[0].seconds - 2) < 1e-9,
+      `the tied note lasts ${player.schedule[0].seconds}s, want 2s for two half notes at 120 BPM`);
+check('the note after a tie still starts on time',
+      Math.abs(player.schedule[2].at - (player.schedule[0].at + 2)) < 1e-9,
+      'the passage closed up over the tie');
+stopSequence();
+
+// A dot has to be worth its half in the ears as well as in the bars.
+audio.ctx.currentTime = 5050;
+const dottedPlay = scenario(() => playSequence([{ key: 'c/4', dot: true }, { key: 'd/4' }], { clef: 'treble', bpm: 120 }));
+check('a dotted note sounds for half again as long',
+      Math.abs(player.schedule[0].seconds - 0.75) < 1e-9,
+      `the dotted quarter lasts ${player.schedule[0].seconds}s, want 0.75s at 120 BPM`);
+check('the note after a dotted one starts when the dot has run out',
+      Math.abs(player.schedule[1].at - (player.schedule[0].at + 0.75)) < 1e-9);
+stopSequence();
+
+// Playback must apply the same rule the staff does: a tie joins one pitch to
+// itself, and two different pitches are not tied at all.
+audio.ctx.currentTime = 5060;
+const crossTie = scenario(() => playSequence([{ key: 'c/4', tie: true }, { key: 'd/4' }], { clef: 'treble', bpm: 120 }));
+check('a tie between different pitches sounds as two notes, not one',
+      crossTie.nodes.filter(n => n.kind === 'oscillator').length === 2,
+      `${crossTie.nodes.filter(n => n.kind === 'oscillator').length} note(s) - playback merged two different pitches`);
+stopSequence();
+
+// Three notes tied together are one sound, not a held note with another
+// struck in the middle of it.
+audio.ctx.currentTime = 5070;
+const chainTie = scenario(() => playSequence(
+  [{ key: 'c/4', tie: true }, { key: 'c/4', tie: true }, { key: 'c/4' }, { key: 'd/4' }],
+  { clef: 'treble', bpm: 120 }));
+check('a chain of ties is struck once, however long the chain',
+      chainTie.nodes.filter(n => n.kind === 'oscillator').length === 2,
+      `${chainTie.nodes.filter(n => n.kind === 'oscillator').length} note(s) for three tied plus one more`);
+check('a chain of ties is held for the whole chain',
+      Math.abs(player.schedule[0].seconds - 1.5) < 1e-9,
+      `held ${player.schedule[0].seconds}s, want 1.5s for three quarters at 120 BPM`);
+stopSequence();
+
+const untied = [{ key: 'c/4', dur: 'h' }, { key: 'c/4', dur: 'h' }, { key: 'd/4' }];
+audio.ctx.currentTime = 5100;
+const untiedPlay = scenario(() => playSequence(untied, { clef: 'treble', bpm: 120 }));
+check('without the tie the same pitch is struck twice',
+      untiedPlay.nodes.filter(n => n.kind === 'oscillator').length === 3);
+stopSequence();
 
 /* ---- summary ----------------------------------------------------------- */
 

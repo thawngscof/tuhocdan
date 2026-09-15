@@ -205,7 +205,22 @@ Quãng 2 đến quãng 8, nhận biết trên khuông và trên phím.
 Dữ liệu hiện chỉ có nốt thăng (`acc: "♯"`). Thêm cách ghi giáng và hóa biểu đầu khuông.
 - Cần quyết định: ghi trùng âm (C♯/D♭) hiển thị thế nào
 
-### T15 · Nốt chấm dôi và dấu nối
+### T15 · Nốt chấm dôi và dấu nối — ✅ XONG
+`item.dot` và `item.tie`.
+
+**Gom một chỗ duy nhất biết một nốt đáng bao nhiêu phách:** `itemBeats(item)`. Trước đó ba nơi tự tính riêng (chia ô nhịp, lập lịch phát, bảng bài hát), tức chấm dôi có thể đáng một giá trị khi chia ô nhịp và một giá trị khác khi phát ra tiếng. Có hai phép phá riêng cho đúng kiểu lệch đó.
+
+Chấm dôi vẽ bên phải đầu nốt; nốt nằm **trên dòng kẻ** thì chấm nhích lên khe phía trên — chỗ người khắc nhạc vẫn đặt.
+
+Dấu nối chỉ nối **hai nốt cùng cao độ**; nối hai cao độ khác nhau là dấu luyến, nghĩa hoàn toàn khác, nên bị từ chối. Khi phát, chuỗi nốt nối **gõ một lần** rồi ngân trọn cả chuỗi — dài bao nhiêu nốt cũng vậy.
+
+**Khúc Hoan Ca nay ghi đúng tiết tấu Beethoven viết** (đen chấm dôi – móc đơn – trắng); trường `simplified` đã gỡ bỏ.
+
+Thêm 34 phép kiểm tra, kiểm chứng bằng 19 phép phá — bắt được cả 19. **Bốn phép lúc đầu lọt lưới**, và hai trong số đó chỉ ra vấn đề thật:
+- Dây nối **từ ba nốt trở lên** gộp sai — nốt thứ ba vẫn bị gõ lại giữa lúc đang ngân. Đã sửa thành gộp theo chuỗi.
+- `Math.max` khi tính điểm kết đoạn là thừa: dấu nối nuốt đúng độ dài nốt sau nên kết thúc đúng chỗ nốt đó lẽ ra kết thúc, không bao giờ xa hơn. Đã rút gọn và ghi lý do vào comment.
+- Một phép phá tôi viết ra JS **không hợp lệ** (`break` nằm trong `if`), chẳng chứng minh được gì; đã viết lại.
+- `seen(dotY)` tự nó không gánh việc — lề 14px của viewBox đã che đủ chấm nhích 5px. Nay phép phá kiểm **cả cặp**: bỏ đo *và* đẩy chấm ra xa.
 - **Phụ thuộc:** T1, T3
 
 ### T16 · Chơi bằng bàn phím máy tính
@@ -220,7 +235,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 130KB / 2576 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 133KB / 2633 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -234,7 +249,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **452 phép kiểm tra**, kiểm chứng bằng **172 phép phá có chủ đích** trên 11 bộ.
+Tổng cộng: **486 phép kiểm tra**, kiểm chứng bằng **191 phép phá có chủ đích** trên 12 bộ.
 
 ## Việc chưa kiểm chứng
 
