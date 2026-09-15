@@ -538,14 +538,34 @@
     const DEFAULT_DUR = 'q';
 
     // Generalized SVG Pure Renderer Function
-    function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160) {
+    function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null) {
       const container = document.getElementById(containerId);
       if (!container) return;
 
       const lineSpacing = 10;
       const topMargin = 50;
-      const startX = 65;
       const lineY1 = topMargin + 4 * lineSpacing; // Bottom line (Line 1)
+      const yAtStep = (s) => lineY1 - s * (lineSpacing / 2);
+      const INK = "#0f172a";
+      const STAFF_INK = "#64748b";
+
+      // Time signature, written "phách/đơn-vị" as in "3/4". Leaving it out means
+      // a bare staff with no bars - what every caller written before T3 expects,
+      // so nothing about the layout may shift unless one is actually asked for.
+      let meter = null;
+      if (timeSig !== null && timeSig !== undefined) {
+        const sig = /^\s*(\d+)\s*\/\s*(\d+)\s*$/.exec(String(timeSig));
+        const top = sig && Number(sig[1]), bottom = sig && Number(sig[2]);
+        if (!sig || top < 1 || bottom < 1) {
+          console.error(`renderScoreSVG: unreadable time signature "${timeSig}" - drawing without one.`);
+        } else {
+          // DURATIONS.beats counts quarter notes, so convert the bar capacity into
+          // that same unit: 3/4 holds 3 quarters, 6/8 holds 3, 2/2 holds 4.
+          meter = { top, bottom, capacity: top * 4 / bottom };
+        }
+      }
+
+      const startX = meter ? 92 : 65;   // leave room for the numerals
       
       // Vertical extent actually drawn; the viewBox is fitted to it at the end so
       // notes far above/below the staff (C2, C6) stay visible instead of clipping.
@@ -560,8 +580,22 @@
       }
 
       // Draw Start/End vertical barlines
-      svg += `<line x1="15" y1="${topMargin}" x2="15" y2="${lineY1}" stroke="#64748b" stroke-width="2"/>`;
-      svg += `<line x1="${width - 15}" y1="${topMargin}" x2="${width - 15}" y2="${lineY1}" stroke="#64748b" stroke-width="2"/>`;
+      svg += `<line x1="15" y1="${topMargin}" x2="15" y2="${lineY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+      if (meter) {
+        // A metered passage ends on a double bar: thin, then thick.
+        svg += `<line x1="${width - 21}" y1="${topMargin}" x2="${width - 21}" y2="${lineY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+        svg += `<line x1="${width - 15}" y1="${topMargin}" x2="${width - 15}" y2="${lineY1}" stroke="${STAFF_INK}" stroke-width="5"/>`;
+      } else {
+        svg += `<line x1="${width - 15}" y1="${topMargin}" x2="${width - 15}" y2="${lineY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+      }
+
+      // The numerals stack up after the clef: the count centred between lines 3
+      // and 5, the unit between lines 1 and 3.
+      if (meter) {
+        const sigAttrs = `font-family="Inter, sans-serif" font-size="22" font-weight="800" fill="${INK}" text-anchor="middle" dominant-baseline="central"`;
+        svg += `<text x="66" y="${yAtStep(6)}" ${sigAttrs}>${meter.top}</text>`;
+        svg += `<text x="66" y="${yAtStep(2)}" ${sigAttrs}>${meter.bottom}</text>`;
+      }
 
       // Draw Clef Symbol (Vector SVG for Treble and Bass)
       if (clef === 'treble') {
@@ -581,9 +615,6 @@
       // convention rather than one derived from a note name. Coordinates are
       // absolute (no group transform) so the viewBox fitter and the headless
       // checks measure the real ink.
-      const yAtStep = (s) => lineY1 - s * (lineSpacing / 2);
-      const INK = "#0f172a";
-
       function restSvg(x, durKey) {
         const mid = yAtStep(4);                      // the middle line
         const half = lineSpacing / 2;
@@ -615,9 +646,38 @@
       const totalNotes = notesArray.length;
       const availWidth = width - startX - 35;
       const noteSpacing = totalNotes > 1 ? availWidth / (totalNotes - 0.5) : availWidth / 2;
+      const xOf = (idx) => startX + idx * noteSpacing + 20;
+      const beatsOf = (item) => (DURATIONS[item.dur || DEFAULT_DUR] || DURATIONS[DEFAULT_DUR]).beats;
+
+      // Fill one bar at a time until it is full, then start the next. A bar that
+      // does not add up is a mistake in the passage, not something to paper
+      // over, so it gets reported instead of quietly redrawn.
+      const barlineBefore = new Set();
+      if (meter && totalNotes) {
+        const bars = [];
+        let bar = { start: 0, beats: 0 };
+        notesArray.forEach((item, idx) => {
+          if (bar.beats >= meter.capacity - 1e-9) { bars.push(bar); bar = { start: idx, beats: 0 }; }
+          bar.beats += beatsOf(item);
+        });
+        bars.push(bar);
+
+        bars.forEach((b, i) => {
+          if (i > 0) barlineBefore.add(b.start);
+          if (Math.abs(b.beats - meter.capacity) > 1e-9) {
+            console.warn(`renderScoreSVG: ô nhịp ${i + 1} có ${b.beats} phách, nhịp ${meter.top}/${meter.bottom} cần ${meter.capacity}.`);
+          }
+        });
+
+        // Halfway between the two notes it separates.
+        barlineBefore.forEach((idx) => {
+          const bx = (xOf(idx - 1) + xOf(idx)) / 2;
+          svg += `<line x1="${bx}" y1="${topMargin}" x2="${bx}" y2="${lineY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+        });
+      }
 
       notesArray.forEach((item, idx) => {
-        const noteX = startX + idx * noteSpacing + 20;
+        const noteX = xOf(idx);
 
         // Silence takes up a slot in the bar exactly like a note does.
         if (item.rest) {

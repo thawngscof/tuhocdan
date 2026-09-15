@@ -21,9 +21,9 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 
 | Khái niệm | Trạng thái |
 |---|---|
-| Hình nốt (tròn, trắng, đen, móc đơn) | chưa có, renderer chỉ vẽ nốt đen |
-| Dấu lặng | chưa có |
-| Số chỉ nhịp, vạch nhịp, ô nhịp | chưa có |
+| Hình nốt (tròn, trắng, đen, móc đơn) | ✅ T1 |
+| Dấu lặng | ✅ T2 |
+| Số chỉ nhịp, vạch nhịp, ô nhịp | ✅ T3 |
 | Tiết tấu, máy gõ nhịp | chưa có |
 | Hợp âm tay trái | chưa có — thiếu sót lớn nhất với organ |
 | Gam, ngón bấm | chưa có |
@@ -70,9 +70,16 @@ Thêm 13 phép kiểm tra, kiểm chứng bằng 9 phép phá có chủ đích �
 Nâng `verticalExtent` trong `verify.js`: trước chỉ đọc thuộc tính `y`, giờ hiểu `rect` (cả chiều cao), bán kính `circle`/`ellipse`, lệnh `L`/`H`/`V` trong path, và dịch chuyển của `<g transform="translate">`. Đã kiểm chứng là cần thiết: một `rect` tràn đáy viewBox **chỉ bằng chiều cao** thì bản cũ bỏ lọt, bản mới bắt được.
 - **Phụ thuộc:** T1
 
-### T3 · Số chỉ nhịp, vạch nhịp, ô nhịp
-Tham số `timeSig` (2/4, 3/4, 4/4). Tự chia ô nhịp theo tổng trường độ, vẽ vạch nhịp, vạch kết đôi.
-- Cảnh báo ra console khi ô nhịp thừa/thiếu phách
+### T3 · Số chỉ nhịp, vạch nhịp, ô nhịp — ✅ XONG
+Tham số thứ sáu `timeSig`, dạng chuỗi `"3/4"`. Sức chứa ô nhịp quy về đơn vị nốt đen (`tử × 4 / mẫu`) để dùng chung `DURATIONS.beats` — nhờ vậy 6/8 chứa 3 phách đen chứ không phải 6, và 2/2 chứa 4.
+
+Đổ đầy từng ô nhịp rồi mới sang ô kế; vạch nhịp vẽ ở **chính giữa hai nốt** mà nó ngăn cách. Kết bằng vạch đôi mảnh–đậm. Số chỉ nhịp xếp chồng sau khóa nhạc: tử giữa dòng 3–5, mẫu giữa dòng 1–3.
+
+Ô nhịp thừa hoặc thiếu phách thì `console.warn` nêu rõ ô số mấy, đang có bao nhiêu phách, nhịp cần bao nhiêu — dùng `warn` chứ không `error` để không lẫn với quy ước "từ chối vẽ" đã có. Số chỉ nhịp không đọc được thì `console.error` rồi vẽ khuông trơn, không đoán bừa thành 4/4.
+
+**Không truyền `timeSig` thì không một pixel nào đổi** — `startX` chỉ nới rộng khi thật sự có nhịp. Có phép kiểm tra chốt riêng điều này: lúc đầu nó thiếu, và một mutation dời `startX` cho *mọi* khuông đã lọt lưới dù làm cả 98 render cũ dịch ngang.
+
+Thêm 33 phép kiểm tra, kiểm chứng bằng 13 phép phá có chủ đích — bắt được cả 13. Ranh giới ô nhịp đối chiếu bằng **kỳ vọng viết tay** chứ không cài lại vòng lặp chia ô nhịp trong test: viết lại thuật toán thì hai bên sẽ cùng sai một kiểu.
 - **Phụ thuộc:** T1, T2
 
 ### T4 · Số ngón tay
@@ -154,7 +161,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 58KB / 918 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 65KB / 1065 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG

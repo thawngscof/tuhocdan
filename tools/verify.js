@@ -598,6 +598,173 @@ check('unknown duration on a rest logs an error', badRestLogged === 1,
       `console.error called ${badRestLogged}x`);
 check('unknown duration on a rest falls back to a lặng đen', fellBack === renderRest('q'));
 
+/* ---- 14. time signature, bar lines and bars ----------------------------
+ * Bar boundaries are asserted against hand-written expectations rather than
+ * against a second copy of the fill-the-bar loop: reimplementing the
+ * algorithm in the test would make the two agree on the same mistake.
+ */
+
+const W = 340;
+const meterRender = (items, sig, clef = 'treble') => {
+  renderScoreSVG('probe', items, clef, W, 160, sig);
+  return rendered.probe;
+};
+
+/* every full-height vertical rule, tagged by weight */
+const vRules = (svg) =>
+  [...svg.matchAll(new RegExp(`<line x1="([-\\d.]+)" y1="${TOP_MARGIN}" x2="[-\\d.]+" y2="${LINE_Y1}" stroke="#64748b" stroke-width="([\\d.]+)"`, 'g'))]
+    .map(m => ({ x: +m[1], w: +m[2] }));
+
+// interior bar lines = the full-height rules that are neither the opening
+// rule nor either half of the closing double bar
+const interiorBars = (svg) =>
+  vRules(svg).filter(r => Math.abs(r.x - 15) > 0.01 && Math.abs(r.x - (W - 21)) > 0.01 && Math.abs(r.x - (W - 15)) > 0.01)
+             .map(r => r.x).sort((a, b) => a - b);
+
+const noteXs = (svg) => [...svg.matchAll(/translate\(([-\d.]+), [-\d.]+\) rotate/g)].map(m => +m[1]);
+const quiet = (fn) => { const w = console.warn; console.warn = () => {}; try { return fn(); } finally { console.warn = w; } };
+const warnings = (fn) => { const w = console.warn; const out = []; console.warn = (m) => out.push(m); try { fn(); } finally { console.warn = w; } return out; };
+
+const q = (n) => Array.from({ length: n }, () => ({ key: 'c/4' }));
+
+/* 14a. the numerals stack where convention puts them */
+
+for (const [sig, top, bottom] of [['4/4', '4', '4'], ['3/4', '3', '4'], ['2/4', '2', '4'], ['6/8', '6', '8']]) {
+  const svg = quiet(() => meterRender(q(1), sig));
+  const nums = [...svg.matchAll(/<text x="66" y="([-\d.]+)"[^>]*>(\d+)<\/text>/g)].map(m => ({ y: +m[1], n: m[2] }));
+  const ok = nums.length === 2
+    && nums[0].n === top && Math.abs(nums[0].y - yAtStep(6)) < 0.01
+    && nums[1].n === bottom && Math.abs(nums[1].y - yAtStep(2)) < 0.01;
+  check(`time signature ${sig} is written as ${top} over ${bottom}`, ok,
+        `drew ${JSON.stringify(nums)}, want ${top}@${yAtStep(6)} over ${bottom}@${yAtStep(2)}`);
+}
+
+/* 14b. leaving the signature out must change nothing at all */
+
+renderScoreSVG('probe', q(3), 'treble', W, 160);
+const unmetered = rendered.probe;
+renderScoreSVG('probe', q(3), 'treble', W, 160, null);
+check('passing no time signature renders exactly like omitting it', rendered.probe === unmetered);
+check('an unmetered staff draws no numerals and no bar lines',
+      !unmetered.includes('<text x="66"') && interiorBars(unmetered).length === 0
+        && vRules(unmetered).length === 2,
+      `${vRules(unmetered).length} vertical rule(s), want 2`);
+
+/* 14c. bars fill to capacity, then break */
+
+const BAR_CASES = [
+  { sig: '4/4', items: q(4),  breaks: [],        why: 'four quarters exactly fill 4/4' },
+  { sig: '4/4', items: q(8),  breaks: [4],       why: 'eight quarters make two bars of 4/4' },
+  { sig: '3/4', items: q(9),  breaks: [3, 6],    why: 'nine quarters make three bars of 3/4' },
+  { sig: '2/4', items: q(6),  breaks: [2, 4],    why: 'six quarters make three bars of 2/4' },
+  { sig: '4/4', items: [{ key: 'c/4', dur: 'h' }, { key: 'c/4', dur: 'h' }, { key: 'c/4' }, { key: 'c/4' }, { key: 'c/4', dur: 'h' }],
+    breaks: [2], why: 'two halves fill a bar, then two quarters and a half fill the next' },
+  { sig: '6/8', items: Array.from({ length: 6 }, () => ({ key: 'c/4', dur: 'e' })), breaks: [], why: 'six eighths are one bar of 6/8, not six' },
+  { sig: '6/8', items: Array.from({ length: 12 }, () => ({ key: 'c/4', dur: 'e' })), breaks: [6], why: 'twelve eighths are two bars of 6/8' },
+];
+
+for (const c of BAR_CASES) {
+  const svg = quiet(() => meterRender(c.items, c.sig));
+  const bars = interiorBars(svg);
+  const xs = noteXs(svg);
+  const want = c.breaks.map(i => (xs[i - 1] + xs[i]) / 2);
+  const ok = bars.length === want.length && bars.every((x, i) => Math.abs(x - want[i]) < 0.01);
+  check(`${c.sig}: ${c.why}`, ok,
+        `bar lines at [${bars.map(n => n.toFixed(1))}], want [${want.map(n => n.toFixed(1))}] (before note ${c.breaks.join(', ') || 'none'})`);
+}
+
+/* 14d. a rest fills its share of the bar like any note */
+
+const withRests = quiet(() => meterRender(
+  [{ key: 'c/4' }, { rest: true }, { key: 'c/4' }, { key: 'c/4' },
+   { key: 'c/4' }, { rest: true }, { key: 'c/4' }, { key: 'c/4' }], '4/4'));
+check('rests count toward the bar', interiorBars(withRests).length === 1,
+      `${interiorBars(withRests).length} interior bar line(s), want 1 - rests are not being counted`);
+
+const restsOnly = quiet(() => meterRender(
+  [{ rest: true, dur: 'h' }, { rest: true, dur: 'h' }, { rest: true, dur: 'h' }, { rest: true, dur: 'h' }], '4/4'));
+check('a bar of nothing but rests still divides', interiorBars(restsOnly).length === 1,
+      `${interiorBars(restsOnly).length} interior bar line(s), want 1`);
+
+/* 14e. a bar that does not add up says so */
+
+check('a short bar is reported',
+      warnings(() => meterRender(q(3), '4/4')).length === 1);
+check('an overfull bar is reported',
+      warnings(() => meterRender([{ key: 'c/4', dur: 'w' }, { key: 'c/4' }], '3/4')).length === 2,
+      'want one complaint per bad bar: 4 beats then a leftover 1');
+check('a bar that adds up is not reported',
+      warnings(() => meterRender(q(8), '4/4')).length === 0);
+check('the complaint names the bar, its beats and the meter',
+      /ô nhịp 1 có 3 phách, nhịp 4\/4 cần 4/.test(warnings(() => meterRender(q(3), '4/4'))[0] || ''),
+      warnings(() => meterRender(q(3), '4/4'))[0]);
+
+/* 14f. an unreadable signature is refused, not guessed at */
+
+for (const bad of ['4/x', '4', '0/4', '4/0', 'bốn bốn', '']) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const svg = meterRender(q(3), bad);
+  console.error = realErr;
+  check(`time signature "${bad}" is refused`, logged === 1 && svg === unmetered,
+        `console.error called ${logged}x; layout ${svg === unmetered ? 'unchanged' : 'CHANGED'}`);
+}
+
+/* 14g. a metered passage closes on a double bar */
+
+const metered = quiet(() => meterRender(q(4), '4/4'));
+const closing = vRules(metered).filter(r => r.x > W - 30);
+check('a metered passage ends on a thin-then-thick double bar',
+      closing.length === 2 && closing.some(r => r.w === 2) && closing.some(r => r.w === 5)
+        && Math.min(...closing.map(r => r.x)) < Math.max(...closing.map(r => r.x)),
+      `closing rules: ${JSON.stringify(closing)}`);
+check('an unmetered passage keeps its single closing bar',
+      vRules(unmetered).filter(r => r.x > W - 30).length === 1);
+
+/* 14h. a bar line separates the notes on either side of it */
+
+const eight = quiet(() => meterRender(q(8), '4/4'));
+const eightXs = noteXs(eight);
+const [split] = interiorBars(eight);
+check('the bar line falls between the notes it separates',
+      split > eightXs[3] && split < eightXs[4],
+      `bar line at ${split}, notes at ${eightXs[3]} and ${eightXs[4]}`);
+
+/* 14i. an empty passage is not a broken bar */
+
+check('an empty metered staff draws no bar line and makes no complaint',
+      warnings(() => { const svg = meterRender([], '4/4'); return svg; }).length === 0
+        && interiorBars(quiet(() => meterRender([], '4/4'))).length === 0);
+
+/* 14j. the meter applies in both clefs */
+
+for (const clef of CLEFS) {
+  const svg = quiet(() => meterRender(q(8), '4/4', clef));
+  check(`${clef}: bars divide the same way`, interiorBars(svg).length === 1,
+        `${interiorBars(svg).length} interior bar line(s), want 1`);
+}
+
+/* 14k. the meter buys its own room instead of taking the notes' -----------
+ * T1 promised that a call with no duration draws exactly what it drew
+ * before; T3 owes the same promise horizontally. Nothing else pins the
+ * unmetered note position, so widening startX for every staff - not just
+ * metered ones - would silently shift all 98 existing renders sideways.
+ * 85 is where the pre-T3 layout put the first note (startX 65 plus the
+ * 20pt lead-in) and is what the guide and quiz screens are built around.
+ */
+
+renderScoreSVG('probe', q(4), 'treble', W, 160);
+const bareFirstX = noteXs(rendered.probe)[0];
+check('an unmetered staff still starts its notes at x=85',
+      Math.abs(bareFirstX - 85) < 0.01,
+      `first note at x=${bareFirstX} - every pre-T3 render just moved`);
+
+const meteredFirstX = noteXs(quiet(() => meterRender(q(4), '4/4')))[0];
+check('a meter pushes the notes clear of its own numerals',
+      meteredFirstX > 66 + 11,          // numeral centre x=66, half a 22pt glyph
+      `numerals centred at x=66 but the first note sits at x=${meteredFirstX}`);
+
 /* ---- summary ----------------------------------------------------------- */
 
 console.log(`\n${drawn} note renders checked (${accidentals} carrying accidentals)`);
