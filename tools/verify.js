@@ -61,6 +61,53 @@ const LINE_Y1 = TOP_MARGIN + 4 * LINE_SPACING;
 
 const CLEFS = ['treble', 'bass'];
 
+/* ---- 0. the markup and the script agree --------------------------------
+ * Everything above this point loads the page's <script> block and never looks
+ * at the HTML around it, so a button wired to a function that does not exist,
+ * or a lookup for an element nobody renders, would go unnoticed until someone
+ * clicked it. These two halves are only joined by name, so check the names.
+ */
+
+const markup = html.replace(/<script>[\s\S]*?<\/script>/g, '');
+const pageScript = script[1];
+
+// Ids written literally in the markup. Ones built in JS carry a ${...} and
+// belong to the keyboard, which section 5 already covers.
+const markupIds = new Set(
+  [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]).filter(id => !id.includes('${'))
+);
+
+const declaredFns = new Set([...pageScript.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
+const BUILTINS = new Set(['Number', 'Boolean', 'String', 'parseInt', 'parseFloat']);
+
+const calledFromMarkup = new Set();
+for (const attr of markup.matchAll(/\bon(?:click|input|change|submit|keydown)="([^"]+)"/g)) {
+  for (const call of attr[1].matchAll(/([A-Za-z_$][\w$]*)\s*\(/g)) {
+    if (!BUILTINS.has(call[1])) calledFromMarkup.add(call[1]);
+  }
+}
+const undefinedHandlers = [...calledFromMarkup].filter(fn => !declaredFns.has(fn));
+check(`every handler in the markup exists in the script (${calledFromMarkup.size} checked)`,
+      undefinedHandlers.length === 0,
+      'the markup calls: ' + undefinedHandlers.join(', '));
+
+const literalIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]).filter(id => !id.includes('${'));
+const duplicateIds = [...new Set(literalIds.filter((id, i) => literalIds.indexOf(id) !== i))];
+check('no id is used twice', duplicateIds.length === 0, duplicateIds.join(', '));
+
+// Lookups for ids built at runtime (beat-dot-${i}, key-${...}) are covered by
+// their own checks; only fixed names can be matched up here.
+const lookedUp = new Set(
+  [...pageScript.matchAll(/getElementById\((["'`])([a-zA-Z][\w-]*)\1\)/g)].map(m => m[2])
+);
+const absentIds = [...lookedUp].filter(id => !markupIds.has(id));
+check(`every element the script looks up by name is in the markup (${lookedUp.size} checked)`,
+      absentIds.length === 0,
+      'the script looks for: ' + absentIds.join(', '));
+
+check('the markup really was searched', calledFromMarkup.size >= 10 && lookedUp.size >= 10,
+      `${calledFromMarkup.size} handler(s), ${lookedUp.size} lookup(s) - the patterns stopped matching`);
+
 /* ---- 1. every physical key is teachable in both clefs ------------------ */
 
 for (const clef of CLEFS) {

@@ -204,6 +204,12 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Đã kiểm chứng bằng 8 phép phá có chủ đích, bắt được cả 8: khôi phục fallback `step: 0`, đặt sai bậc nốt, xoá dấu thăng, trả lại vòng lặp dòng kẻ phụ thừa, quay về ký âm giáng, phá `scrollKeyboardTo`, bỏ viewBox co giãn, xoá một nốt khỏi dữ liệu.
 
+**Bổ sung sau T6 — đối chiếu HTML với script.** Mọi phép kiểm tra khác chỉ nạp khối `<script>` và không hề nhìn phần HTML quanh nó, nên một nút gắn vào hàm gõ sai tên sẽ lọt hoàn toàn cho tới khi có người bấm. Hai nửa này chỉ nối với nhau bằng cái tên, nên nay đối chiếu tên: mọi `onclick`/`oninput`/`onchange` phải trỏ tới hàm có thật, không id nào trùng, và mọi `getElementById` với tên cố định phải có phần tử tương ứng. Khối này chạy **đầu tiên** để lỗi tên được gọi đúng tên thay vì hiện ra thành stack trace ở tận phần âm thanh.
+
+Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
+
+Tổng cộng: **226 phép kiểm tra**, kiểm chứng bằng **98 phép phá có chủ đích** trên 7 bộ.
+
 ## Việc chưa kiểm chứng
 
 - **Âm thanh chưa test thật trên trình duyệt.** Extension Chrome treo lúc kiểm tra. `playTone` có gọi `audioCtx.resume()` khi bị suspend, nhưng cần xác nhận tiếng thực sự phát ra sau cú click đầu tiên.
