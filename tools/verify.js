@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -2961,6 +2961,151 @@ for (const clef of CLEFS) {
 }
 check('a key signature never falls outside the fitted viewBox', sigClipped.length === 0,
       sigClipped.slice(0, 3).join('; '));
+
+/* ---- 28. playing from the computer keyboard ------------------------------
+ * The layout is checked against the instrument it imitates: the home row has
+ * to climb the white keys in order, and each letter on the row above has to
+ * land on the black key that really does sit between its neighbours.
+ */
+
+check('the computer keyboard covers a full octave and the C above it',
+      COMPUTER_KEYS.length === 13 && COMPUTER_KEYS[12].offset === 12,
+      `${COMPUTER_KEYS.length} keys`);
+check('every semitone of the octave is reachable',
+      new Set(COMPUTER_KEYS.map(k => k.offset)).size === 13
+        && COMPUTER_KEYS.every((k, i) => k.offset === i),
+      COMPUTER_KEYS.map(k => k.offset).join(', '));
+check('no computer key is used twice',
+      new Set(COMPUTER_KEYS.map(k => k.code)).size === COMPUTER_KEYS.length);
+
+// Which offsets are black keys is not a matter of taste: it is which notes
+// have a sharp. Derive it rather than trusting the table's own label.
+const BLACK_OFFSETS = new Set([1, 3, 6, 8, 10]);
+check('the keys marked black are the ones that really are black',
+      COMPUTER_KEYS.every(k => (k.colour === 'black') === BLACK_OFFSETS.has(k.offset % 12)),
+      COMPUTER_KEYS.filter(k => (k.colour === 'black') !== BLACK_OFFSETS.has(k.offset % 12))
+                   .map(k => k.code).join(', '));
+
+const homeRow = COMPUTER_KEYS.filter(k => k.colour === 'white').map(k => k.code);
+check('the white keys run along the home row in order',
+      JSON.stringify(homeRow) === JSON.stringify(['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK']),
+      homeRow.join(' '));
+const upperRow = COMPUTER_KEYS.filter(k => k.colour === 'black').map(k => k.code);
+check('the black keys sit on the row above',
+      JSON.stringify(upperRow) === JSON.stringify(['KeyW', 'KeyE', 'KeyT', 'KeyY', 'KeyU']),
+      upperRow.join(' '));
+
+/* 28a. each computer key reaches the piano key it should */
+
+setTypingOctave(4);
+const wrongKeys = [];
+for (const mapped of COMPUTER_KEYS) {
+  const got = computerKeyToPianoKey(mapped.code, 4);
+  const wantLetter = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'][mapped.offset % 12];
+  const want = `${wantLetter}/${4 + Math.floor(mapped.offset / 12)}`;
+  if (got !== want) wrongKeys.push(`${mapped.code}: ${got}, want ${want}`);
+  if (got && !keyboardKeys.some(k => k.key === got)) wrongKeys.push(`${mapped.code}: ${got} is not on the keyboard`);
+}
+check('every computer key reaches the piano key it stands for', wrongKeys.length === 0,
+      wrongKeys.join('; '));
+check('a letter with no key behind it reaches nothing',
+      computerKeyToPianoKey('KeyQ') === null && computerKeyToPianoKey('Space') === null);
+
+// The octave the UI offers is fenced in, so the guard inside the lookup is
+// never reached that way - but the function takes an octave from anyone, and
+// must not hand back a key that is not on the instrument.
+check('an octave off the end of the keyboard reaches nothing',
+      computerKeyToPianoKey('KeyA', 9) === null && computerKeyToPianoKey('KeyA', 0) === null,
+      `C9 gave ${computerKeyToPianoKey('KeyA', 9)}, C0 gave ${computerKeyToPianoKey('KeyA', 0)}`);
+check('the top C of the highest octave is still a real key',
+      computerKeyToPianoKey('KeyK', 5) === 'c/6'
+        && keyboardKeys.some(k => k.key === 'c/6'));
+
+/* 28b. the octave moves, and stays on the keyboard */
+
+for (const octave of [2, 3, 4, 5]) {
+  check(`the octave can be set to C${octave}`, setTypingOctave(octave) === true);
+  check(`every key still reaches the keyboard at C${octave}`,
+        COMPUTER_KEYS.every(k => computerKeyToPianoKey(k.code, octave) !== null),
+        COMPUTER_KEYS.filter(k => computerKeyToPianoKey(k.code, octave) === null).map(k => k.code).join(', '));
+}
+for (const octave of [1, 6, 4.5, '4']) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const took = setTypingOctave(octave);
+  console.error = realErr;
+  check(`an octave of ${typeof octave === 'string' ? `"${octave}"` : octave} is refused`, took === false && logged === 1);
+}
+setTypingOctave(4);
+
+/* 28c. a key press sounds the note */
+
+const press = (code, extra) => {
+  const event = Object.assign({ code, repeat: false, target: { tagName: 'BODY' }, preventDefault() {} }, extra || {});
+  return handleComputerKeyDown(event);
+};
+
+audio.ctx.currentTime = 8000;
+const pressed = scenario(() => press('KeyA'));
+check('pressing A sounds a note', pressed.result === true
+      && pressed.nodes.filter(n => n.kind === 'oscillator').length === 1);
+const pressedFreq = pressed.events.find(e => e.param === 'frequency');
+check('pressing A sounds middle C',
+      Math.abs(pressedFreq.v - notesData.treble.find(n => n.key === 'c/4').freq) < 1e-6,
+      `sounded ${pressedFreq.v}Hz`);
+
+audio.ctx.currentTime = 8100;
+const held = scenario(() => press('KeyA', { repeat: true }));
+check('holding a key down does not re-strike it',
+      held.result === false && held.nodes.length === 0);
+
+audio.ctx.currentTime = 8200;
+const typed = scenario(() => press('KeyA', { target: { tagName: 'INPUT' } }));
+check('typing into a box is typing, not playing',
+      typed.result === false && typed.nodes.length === 0);
+const inSelect = scenario(() => press('KeyA', { target: { tagName: 'SELECT' } }));
+check('a dropdown is not an instrument either', inSelect.result === false && inSelect.nodes.length === 0);
+const inEditable = scenario(() => press('KeyA', { target: { tagName: 'DIV', isContentEditable: true } }));
+check('nor is anything else being edited', inEditable.result === false && inEditable.nodes.length === 0);
+
+audio.ctx.currentTime = 8300;
+const shortcut = scenario(() => press('KeyA', { metaKey: true }));
+check('a keyboard shortcut is left to the browser',
+      shortcut.result === false && shortcut.nodes.length === 0);
+
+const unbound = scenario(() => press('KeyQ'));
+check('a letter with nothing behind it does nothing', unbound.result === false && unbound.nodes.length === 0);
+
+/* 28d. Z and X move the octave */
+
+setTypingOctave(4);
+check('Z drops an octave', press('KeyZ') === true && TYPING_OCTAVE.current === 3);
+check('X raises an octave', press('KeyX') === true && TYPING_OCTAVE.current === 4);
+
+setTypingOctave(2);
+let edgeLogged = 0;
+const edgeErr = console.error;
+console.error = () => edgeLogged++;
+press('KeyZ');
+console.error = edgeErr;
+check('Z at the bottom of the range stays put', TYPING_OCTAVE.current === 2 && edgeLogged === 1);
+setTypingOctave(4);
+
+/* 28e. every key on screen says what it is */
+
+buildPianoKeyboard();
+const labelled = keyDivs(rendered[KEYBOARD]);
+const unlabelled = [];
+for (const k of keyboardKeys) {
+  const div = labelled[k.key.replace('/', '_')];
+  if (!div) { unlabelled.push(`${k.noteName}: not rendered`); continue; }
+  if (!div.includes(`aria-label="Nốt ${k.noteName}"`)) unlabelled.push(`${k.noteName}: no label`);
+  if (!div.includes('role="button"')) unlabelled.push(`${k.noteName}: not announced as a button`);
+  if (!div.includes('tabindex="0"')) unlabelled.push(`${k.noteName}: cannot be reached by tab`);
+}
+check(`every key announces itself and can be reached (${keyboardKeys.length} keys)`,
+      unlabelled.length === 0, unlabelled.slice(0, 3).join('; '));
 
 /* ---- summary ----------------------------------------------------------- */
 

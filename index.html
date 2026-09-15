@@ -257,6 +257,14 @@
           </div>
         </div>
 
+        <div class="flex flex-wrap items-center gap-3 mb-3 text-xs text-slate-500">
+          <span class="font-bold uppercase tracking-wider text-slate-500">Chơi bằng bàn phím máy tính</span>
+          <span>Phím trắng <kbd class="px-1.5 py-0.5 rounded border border-slate-300 bg-slate-50 font-mono">A S D F G H J K</kbd></span>
+          <span>Phím đen <kbd class="px-1.5 py-0.5 rounded border border-slate-300 bg-slate-50 font-mono">W E T Y U</kbd></span>
+          <span><kbd class="px-1.5 py-0.5 rounded border border-slate-300 bg-slate-50 font-mono">Z</kbd>/<kbd class="px-1.5 py-0.5 rounded border border-slate-300 bg-slate-50 font-mono">X</kbd> đổi quãng tám</span>
+          <span id="typing-octave" class="font-bold text-blue-700"></span>
+        </div>
+
         <!-- Scrollable Keyboard Container -->
         <div id="keyboard-scroll-container" class="w-full overflow-x-auto pb-4 flex justify-start md:justify-center scroll-smooth">
           <div id="keyboard-element" class="keyboard-wrapper select-none">
@@ -1273,14 +1281,18 @@
         ? `<span class="key-finger pointer-events-none">${keyFingering[k.key]}</span>`
         : '';
 
+      // Every key is reachable and announces itself: the keyboard is the whole
+      // interface here, so leaving it as unlabelled divs shuts people out of it.
+      const aria = (k) => `role="button" tabindex="0" aria-label="Nốt ${k.noteName}"`;
+
       keyboardKeys.forEach((k) => {
         if (k.type === 'white') {
-          html += `<div class="white-key" id="key-${k.key.replace('/', '_')}" onclick="handleKeyClick('${k.key}')">
+          html += `<div class="white-key" id="key-${k.key.replace('/', '_')}" ${aria(k)} onclick="handleKeyClick('${k.key}')">
                     ${fingerBadge(k)}<span class="text-xs font-bold pointer-events-none">${k.name}</span>
                     <span class="key-sub text-[10px] text-slate-400 font-medium pointer-events-none">${k.noteName}</span>
                   </div>`;
         } else {
-          html += `<div class="black-key" id="key-${k.key.replace('/', '_')}" style="left: ${k.pos + 16}px;" onclick="handleKeyClick('${k.key}')">${fingerBadge(k)}</div>`;
+          html += `<div class="black-key" id="key-${k.key.replace('/', '_')}" ${aria(k)} style="left: ${k.pos + 16}px;" onclick="handleKeyClick('${k.key}')">${fingerBadge(k)}</div>`;
         }
       });
 
@@ -2374,6 +2386,71 @@
       return true;
     }
 
+    /* ---- Playing from the computer keyboard -------------------------------
+     * The usual two-row layout: the home row is the white keys and the row
+     * above holds the black keys, sitting over the gaps between them exactly
+     * as they do on the instrument. Z and X move an octave at a time.
+     */
+    const COMPUTER_KEYS = [
+      { code: 'KeyA', offset: 0,  colour: 'white' },   // C
+      { code: 'KeyW', offset: 1,  colour: 'black' },   // C#
+      { code: 'KeyS', offset: 2,  colour: 'white' },   // D
+      { code: 'KeyE', offset: 3,  colour: 'black' },   // D#
+      { code: 'KeyD', offset: 4,  colour: 'white' },   // E
+      { code: 'KeyF', offset: 5,  colour: 'white' },   // F
+      { code: 'KeyT', offset: 6,  colour: 'black' },   // F#
+      { code: 'KeyG', offset: 7,  colour: 'white' },   // G
+      { code: 'KeyY', offset: 8,  colour: 'black' },   // G#
+      { code: 'KeyH', offset: 9,  colour: 'white' },   // A
+      { code: 'KeyU', offset: 10, colour: 'black' },   // A#
+      { code: 'KeyJ', offset: 11, colour: 'white' },   // B
+      { code: 'KeyK', offset: 12, colour: 'white' },   // C, the octave above
+    ];
+    const SEMITONE_KEYS = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+    const TYPING_OCTAVE = { min: 2, max: 5, current: 4 };
+
+    // Which piano key a computer key reaches, at the octave now in play.
+    function computerKeyToPianoKey(code, octave = TYPING_OCTAVE.current) {
+      const mapped = COMPUTER_KEYS.find(k => k.code === code);
+      if (!mapped) return null;
+      const letter = SEMITONE_KEYS[mapped.offset % 12];
+      const key = `${letter}/${octave + Math.floor(mapped.offset / 12)}`;
+      return keyboardKeys.some(k => k.key === key) ? key : null;
+    }
+
+    function setTypingOctave(octave) {
+      if (!Number.isInteger(octave) || octave < TYPING_OCTAVE.min || octave > TYPING_OCTAVE.max) {
+        console.error(`setTypingOctave: ${octave} is outside C${TYPING_OCTAVE.min}-C${TYPING_OCTAVE.max}.`);
+        return false;
+      }
+      TYPING_OCTAVE.current = octave;
+      const label = document.getElementById('typing-octave');
+      if (label) label.innerText = `Quãng tám C${octave}`;
+      return true;
+    }
+
+    // Typing into a box is typing, not playing.
+    function isTypingIntoSomething(target) {
+      if (!target || !target.tagName) return false;
+      const tag = String(target.tagName).toUpperCase();
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable === true;
+    }
+
+    function handleComputerKeyDown(event) {
+      if (event.repeat) return false;                     // holding a key is one note
+      if (event.ctrlKey || event.metaKey || event.altKey) return false;
+      if (isTypingIntoSomething(event.target)) return false;
+
+      if (event.code === 'KeyZ') { setTypingOctave(TYPING_OCTAVE.current - 1); return true; }
+      if (event.code === 'KeyX') { setTypingOctave(TYPING_OCTAVE.current + 1); return true; }
+
+      const key = computerKeyToPianoKey(event.code);
+      if (!key) return false;
+      if (event.preventDefault) event.preventDefault();
+      handleKeyClick(key);
+      return true;
+    }
+
     /* ---- Ear training -----------------------------------------------------
      * Same shape as the note-reading game, but the question arrives through
      * the ears: hear a note and name it, or hear two notes and name the
@@ -3021,6 +3098,8 @@
       buildBeatLights();
       buildIntervalButtons();
       renderEarTraining();
+      setTypingOctave(TYPING_OCTAVE.current);
+      document.addEventListener('keydown', handleComputerKeyDown);
       renderSpellingDemo();
       showKeySignature('G');
       lessonProgress = loadProgress();

@@ -247,8 +247,14 @@ Thêm 34 phép kiểm tra, kiểm chứng bằng 19 phép phá — bắt đượ
 - `seen(dotY)` tự nó không gánh việc — lề 14px của viewBox đã che đủ chấm nhích 5px. Nay phép phá kiểm **cả cặp**: bỏ đo *và* đẩy chấm ra xa.
 - **Phụ thuộc:** T1, T3
 
-### T16 · Chơi bằng bàn phím máy tính
-Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
+### T16 · Chơi bằng bàn phím máy tính — ✅ XONG
+Bố cục hai hàng quen thuộc: **A S D F G H J K** là phím trắng, **W E T Y U** là phím đen nằm đúng các khe giữa chúng như trên đàn thật. **Z / X** đổi quãng tám (C2–C5).
+
+Giữ phím không gõ lại nốt (`event.repeat`), phím tắt trình duyệt (Ctrl/Cmd/Alt) trả về cho trình duyệt, và **gõ vào ô nhập liệu là gõ chữ chứ không phải chơi đàn** — kể cả `<select>` và vùng `contenteditable`, không riêng `<input>`.
+
+**Nhãn ARIA:** mỗi phím nay có `role="button"`, `tabindex="0"` và `aria-label="Nốt <tên nốt>"`. Bàn phím ở đây *là* toàn bộ giao diện, để nguyên nó thành một đống `div` không nhãn là chặn cửa người dùng.
+
+Thêm 34 phép kiểm tra, kiểm chứng bằng 16 phép phá — bắt được cả 16. Phép kiểm tra đối chiếu bố cục với **chính cây đàn nó mô phỏng**: hàng giữa phải leo đúng thứ tự phím trắng, và phím nào là phím đen thì suy từ việc nốt đó có dấu thăng hay không, chứ không tin nhãn `colour` trong bảng. Một phép lọt lúc đầu vì chốt chặn "phím ngoài bàn đàn" không với tới được qua giao diện (quãng tám đã bị khoá 2–5) — nhưng hàm vẫn nhận quãng tám bất kỳ từ người gọi, nên nay kiểm đúng hợp đồng đó.
 
 ### T17 · Bàn phím đàn trên màn hình nhỏ
 29 phím trắng × 44px + 32px padding = 1308px (phím đen định vị absolute nên không cộng bề ngang), hiện phải cuộn ngang trên điện thoại. Cân nhắc thu nhỏ hoặc chế độ 2 quãng tám.
@@ -259,7 +265,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 151KB / 3037 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 156KB / 3116 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -273,7 +279,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **604 phép kiểm tra**, kiểm chứng bằng **239 phép phá có chủ đích** trên 15 bộ.
+Tổng cộng: **638 phép kiểm tra**, kiểm chứng bằng **255 phép phá có chủ đích** trên 16 bộ.
 
 ## Việc chưa kiểm chứng
 
