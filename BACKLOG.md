@@ -27,7 +27,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Tiết tấu, máy gõ nhịp | ✅ T5 + T6 |
 | Hợp âm tay trái | ✅ T8 |
 | Gam, ngón bấm | ✅ T4 + T9 |
-| Bài hát tập chơi | chưa có |
+| Bài hát tập chơi | ✅ T10 (4 bài, thiếu dân ca Việt) |
 | Lộ trình bài học có thứ tự | chưa có |
 
 ## Chạy kiểm thử
@@ -161,9 +161,26 @@ Tay phải `1 2 3 1 2 3 4 5` (luồn ngón cái ở nốt Fa), tay trái `5 4 3 
 Thêm 46 phép kiểm tra, kiểm chứng bằng 17 phép phá — bắt được cả 17. Nốt đối chiếu với **mẫu quãng của gam trưởng** (`0 2 4 5 7 9 11 12` nửa cung), còn ngón bấm đối chiếu với **thứ bàn tay làm được**: năm ngón, không ngón nào bấm hai nốt liền nhau, và **đúng một** chỗ đổi thế tay — chỗ đó bắt buộc phải dính tới ngón cái, tức luồn xuống hoặc bắc qua.
 - **Phụ thuộc:** T4, T6
 
-### T10 · Bài hát tập chơi
-4–6 bài vỡ lòng (dân ca / thiếu nhi quen thuộc, **chỉ chọn bài thuộc phạm vi công cộng**).
-- Hiện khuông nhạc đầy đủ, sáng phím theo từng nốt, chỉnh tốc độ, tập từng câu
+### T10 · Bài hát tập chơi — ✅ XONG (4 bài, xem phần còn thiếu)
+Bốn bài, mỗi bài ghi rõ `origin` giải thích vì sao thuộc phạm vi công cộng:
+
+| Bài | Nguồn |
+|---|---|
+| Kìa Con Bướm Vàng | Dân ca Pháp "Frère Jacques" |
+| Ánh Sao Nhỏ | Dân ca Pháp "Ah! vous dirai-je, maman" |
+| Chú Cừu Nhỏ | Dân gian Anh "Mary Had a Little Lamb" |
+| Khúc Hoan Ca | Beethoven, "Ode an die Freude" (1824) |
+
+Tập từng câu: câu suy ra từ ranh giới ô nhịp (2 ô nhịp một câu), bấm là **lặp lại** câu đó. Cả bài chia trọn ô nhịp — có phép kiểm tra riêng, và còn mượn luôn lời cảnh báo của T3 làm nhân chứng thứ hai.
+
+Khúc Hoan Ca **giản lược hai chỗ kết** (đen–đen–trắng thay cho đen chấm dôi–móc đơn–trắng, vì chấm dôi thuộc T15). Chỗ giản lược được ghi vào trường `simplified` và hiện ra trên trang, chứ không lặng lẽ cho qua.
+
+Thêm 48 phép kiểm tra, kiểm chứng bằng 15 phép phá — bắt được cả 15. Giai điệu thì **không phép kiểm tra nào chứng minh được là đúng bài** — chỉ tai người mới biết; những gì kiểm được là phần xung quanh: ô nhịp cộng đủ, mọi nốt bấm được, mỗi bài khai nguồn gốc, các câu phủ kín bài không hở không chồng.
+
+#### Còn thiếu — cần người kiểm nốt
+Backlog đặt ra "dân ca / thiếu nhi quen thuộc", mà bốn bài trên **đều là giai điệu châu Âu** (dù "Kìa Con Bướm Vàng" thì trẻ em Việt Nam nào cũng thuộc). Tôi định thêm **Lý Cây Xanh** và **Bắc Kim Thang** — dân ca Nam Bộ, chắc chắn thuộc phạm vi công cộng — nhưng **không đủ chắc về cao độ từng nốt**, mà mã hoá sai giai điệu thì còn tệ hơn là thiếu bài. Cần người biết bài chép lại nốt rồi mới thêm.
+
+Cũng đã cân nhắc và **loại**: "Cháu lên ba" (Phong Nhã, mất 2020 — còn bản quyền), "Con cò bé bé" (không rõ tác giả).
 - **Phụ thuộc:** T3, T6
 
 ### T11 · Lộ trình bài học
@@ -208,7 +225,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 101KB / 1985 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 110KB / 2182 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -222,7 +239,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **315 phép kiểm tra**, kiểm chứng bằng **138 phép phá có chủ đích** trên 9 bộ.
+Tổng cộng: **411 phép kiểm tra**, kiểm chứng bằng **170 phép phá có chủ đích** trên 11 bộ.
 
 ## Việc chưa kiểm chứng
 

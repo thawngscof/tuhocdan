@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -2082,6 +2082,124 @@ check('playing the scale puts the fingering on the keys',
       'the keys are not showing the scale fingering');
 stopSequence();
 clearKeyFingering();
+
+/* ---- 22. songs ----------------------------------------------------------
+ * The melodies themselves cannot be checked by arithmetic - only an ear
+ * knows whether they are the right tune. What is checkable is everything
+ * around them: that the bars add up, that every note is playable, that each
+ * song says where it came from, and that the phrases cover the whole song.
+ */
+
+check(`there are between four and six songs (${SONGS.length})`,
+      SONGS.length >= 4 && SONGS.length <= 6);
+check('every song has its own id', new Set(SONGS.map(s => s.id)).size === SONGS.length);
+check('every song has a title and says where it came from',
+      SONGS.every(s => s.title && s.origin));
+check('every song records why it is free to use',
+      SONGS.every(s => /phạm vi công cộng/.test(s.origin)),
+      SONGS.filter(s => !/phạm vi công cộng/.test(s.origin)).map(s => s.title).join(', '));
+
+for (const song of SONGS) {
+  // Ask this first: songBarStarts reads DURATIONS[...].beats, so an unknown
+  // duration crashes the run before the check can name the problem.
+  check(`${song.title}: every duration is one the renderer knows`,
+        song.notes.every(n => DURATIONS[n.dur || 'q']),
+        song.notes.filter(n => !DURATIONS[n.dur || 'q']).map(n => `${n.key} dur=${n.dur}`).join(', '));
+
+  const { starts, capacity, beats } = songBarStarts(song);
+
+  check(`${song.title}: the bars add up (${beats} beats of ${song.timeSig})`,
+        Math.abs(beats % capacity) < 1e-9,
+        `${beats} beats does not divide by ${capacity}`);
+
+  // The renderer has its own opinion about bars; borrow it rather than trust
+  // the arithmetic above on its own.
+  const complaints = [];
+  const realWarn = console.warn;
+  console.warn = (m) => complaints.push(m);
+  renderScoreSVG('probe', song.notes, song.clef, 1120, 190, song.timeSig);
+  console.warn = realWarn;
+  check(`${song.title}: the staff draws it without complaint`, complaints.length === 0,
+        complaints.slice(0, 3).join('\n        '));
+
+  check(`${song.title}: every note is on the keyboard and in its clef`,
+        song.notes.every(n => n.rest || (keyboardKeys.some(k => k.key === n.key)
+                                         && notesData[song.clef].some(d => d.key === n.key))),
+        song.notes.filter(n => !n.rest && !notesData[song.clef].some(d => d.key === n.key))
+                  .map(n => n.key).join(', '));
+
+  // A beginner piece should stay within reach of one hand position plus a
+  // little: an octave and a half is already generous.
+  const pitches = song.notes.filter(n => !n.rest).map(n => absolutePitch(n.key));
+  check(`${song.title}: it stays inside a beginner's reach (${Math.max(...pitches) - Math.min(...pitches)} semitones)`,
+        Math.max(...pitches) - Math.min(...pitches) <= 18);
+
+  /* phrases */
+
+  const phrases = songPhrases(song);
+  check(`${song.title}: it divides into phrases`, phrases.length >= 2, `${phrases.length} phrase(s)`);
+  check(`${song.title}: the phrases cover the song with no gap and no overlap`,
+        phrases[0].from === 0
+          && phrases[phrases.length - 1].to === song.notes.length - 1
+          && phrases.every((p, i) => i === 0 || p.from === phrases[i - 1].to + 1),
+        phrases.map(p => `${p.from}-${p.to}`).join(' '));
+  check(`${song.title}: every phrase starts on a downbeat`,
+        phrases.every(p => starts.includes(p.from)),
+        phrases.map(p => p.from).join(', ') + ' vs bar starts ' + starts.join(', '));
+  check(`${song.title}: every phrase is a phrase the player will accept`,
+        phrases.every(p => Number.isInteger(p.from) && Number.isInteger(p.to)
+                           && p.from >= 0 && p.to < song.notes.length && p.from <= p.to));
+}
+
+/* 22b. a song that simplifies the original says so */
+
+const simplified = SONGS.filter(s => s.simplified);
+check('any song that departs from the original admits it in writing',
+      simplified.every(s => s.simplified.length > 20),
+      'a `simplified` note is too thin to be useful');
+check('Khúc Hoan Ca is flagged as simplified, since it is',
+      Boolean(SONGS.find(s => s.id === 'khuc-hoan-ca').simplified));
+
+/* 22c. choosing and playing */
+
+check('a song can be chosen by id', setSong('anh-sao-nho') === true && currentSongNow().id === 'anh-sao-nho');
+let songLogged = 0;
+let songErr = console.error;
+console.error = () => songLogged++;
+const noSong = setSong('bai-khong-co');
+console.error = songErr;
+check('a song that does not exist is refused', noSong === false && songLogged === 1);
+const stillCurrent = currentSongNow();
+check('a refused song leaves the current one alone',
+      Boolean(stillCurrent) && stillCurrent.id === 'anh-sao-nho',
+      stillCurrent ? `now on "${stillCurrent.id}"` : 'the refused lookup cleared the current song');
+
+setSong('chu-cuu-nho');
+audio.ctx.currentTime = 4000;
+const songPlay = scenario(() => playSong());
+check('playing a song raises no error', songPlay.errors === 0 && songPlay.result === true);
+check('playing a song sounds every note',
+      songPlay.nodes.filter(n => n.kind === 'oscillator').length
+        === SONGS.find(s => s.id === 'chu-cuu-nho').notes.filter(n => !n.rest).length);
+stopSequence();
+
+audio.ctx.currentTime = 4100;
+const phrasePlay = scenario(() => playSongPhrase(0));
+const wantPhrase = songPhrases(SONGS.find(s => s.id === 'chu-cuu-nho'))[0];
+check('playing a phrase sounds only that phrase',
+      phrasePlay.result === true
+        && phrasePlay.nodes.filter(n => n.kind === 'oscillator').length === (wantPhrase.to - wantPhrase.from + 1),
+      `${phrasePlay.nodes.filter(n => n.kind === 'oscillator').length} note(s) for a phrase of ${wantPhrase.to - wantPhrase.from + 1}`);
+check('a phrase is set to loop, so it can be practised', player.loop === true);
+
+let phraseLogged = 0;
+songErr = console.error;
+console.error = () => phraseLogged++;
+const noPhrase = playSongPhrase(99);
+console.error = songErr;
+check('a phrase that does not exist is refused', noPhrase === false && phraseLogged === 1);
+stopSequence();
+setSong('buom-vang');
 
 /* ---- summary ----------------------------------------------------------- */
 

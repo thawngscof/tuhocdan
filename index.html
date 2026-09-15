@@ -343,6 +343,38 @@
         </div>
       </div>
 
+      <!-- Songs -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Bài Hát Tập Chơi</h2>
+            <p class="text-sm text-slate-500">Bốn giai điệu quen thuộc, đều thuộc phạm vi công cộng. Phím sáng theo từng nốt.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="playSong()"
+                    class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm hover:bg-blue-700 transition-all">Phát cả bài</button>
+            <button onclick="stopSequence()"
+                    class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-all">Dừng</button>
+          </div>
+        </div>
+
+        <div id="song-picker" class="flex flex-wrap gap-2 mb-4">
+          <!-- Song buttons generated in JS -->
+        </div>
+
+        <div id="song-score" class="w-full overflow-x-auto bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-start items-center shadow-inner min-h-[190px] mb-2">
+          <!-- SVG injected in JS -->
+        </div>
+        <p id="song-origin" class="text-xs text-slate-500 mb-4"></p>
+
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tập từng câu (bấm để lặp lại)</p>
+          <div id="song-phrases" class="flex flex-wrap gap-2">
+            <!-- Phrase buttons generated in JS -->
+          </div>
+        </div>
+      </div>
+
       <!-- C major scale -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -1632,7 +1664,171 @@
       return true;
     }
 
-    /* ---- The C major scale ------------------------------------------------
+    /* ---- Songs to play ----------------------------------------------------
+     * Public domain only, as the backlog requires, and only melodies whose
+     * notes I could set down with confidence - a song encoded from a hazy
+     * memory of it would teach the wrong tune, which is worse than one fewer
+     * song. `origin` records why each one is free to use.
+     *
+     * All four sit in C major within one octave of the right hand, except for
+     * the low G in Kìa Con Bướm Vàng, which is part of the tune.
+     */
+    const SONGS = [
+      {
+        id: 'buom-vang',
+        title: 'Kìa Con Bướm Vàng',
+        origin: 'Giai điệu dân ca Pháp "Frère Jacques" — phạm vi công cộng',
+        clef: 'treble', timeSig: '4/4', barsPerPhrase: 2,
+        notes: [
+          { key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' }, { key: 'c/4' },
+          { key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' }, { key: 'c/4' },
+          { key: 'e/4' }, { key: 'f/4' }, { key: 'g/4', dur: 'h' },
+          { key: 'e/4' }, { key: 'f/4' }, { key: 'g/4', dur: 'h' },
+          { key: 'g/4', dur: 'e' }, { key: 'a/4', dur: 'e' }, { key: 'g/4', dur: 'e' }, { key: 'f/4', dur: 'e' },
+          { key: 'e/4' }, { key: 'c/4' },
+          { key: 'g/4', dur: 'e' }, { key: 'a/4', dur: 'e' }, { key: 'g/4', dur: 'e' }, { key: 'f/4', dur: 'e' },
+          { key: 'e/4' }, { key: 'c/4' },
+          { key: 'c/4' }, { key: 'g/3' }, { key: 'c/4', dur: 'h' },
+          { key: 'c/4' }, { key: 'g/3' }, { key: 'c/4', dur: 'h' },
+        ],
+      },
+      {
+        id: 'anh-sao-nho',
+        title: 'Ánh Sao Nhỏ',
+        origin: 'Giai điệu dân ca Pháp "Ah! vous dirai-je, maman" — phạm vi công cộng',
+        clef: 'treble', timeSig: '4/4', barsPerPhrase: 2,
+        notes: [
+          { key: 'c/4' }, { key: 'c/4' }, { key: 'g/4' }, { key: 'g/4' },
+          { key: 'a/4' }, { key: 'a/4' }, { key: 'g/4', dur: 'h' },
+          { key: 'f/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'e/4' },
+          { key: 'd/4' }, { key: 'd/4' }, { key: 'c/4', dur: 'h' },
+          { key: 'g/4' }, { key: 'g/4' }, { key: 'f/4' }, { key: 'f/4' },
+          { key: 'e/4' }, { key: 'e/4' }, { key: 'd/4', dur: 'h' },
+          { key: 'g/4' }, { key: 'g/4' }, { key: 'f/4' }, { key: 'f/4' },
+          { key: 'e/4' }, { key: 'e/4' }, { key: 'd/4', dur: 'h' },
+          { key: 'c/4' }, { key: 'c/4' }, { key: 'g/4' }, { key: 'g/4' },
+          { key: 'a/4' }, { key: 'a/4' }, { key: 'g/4', dur: 'h' },
+          { key: 'f/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'e/4' },
+          { key: 'd/4' }, { key: 'd/4' }, { key: 'c/4', dur: 'h' },
+        ],
+      },
+      {
+        id: 'chu-cuu-nho',
+        title: 'Chú Cừu Nhỏ',
+        origin: 'Giai điệu dân gian Anh "Mary Had a Little Lamb" — phạm vi công cộng',
+        clef: 'treble', timeSig: '4/4', barsPerPhrase: 2,
+        notes: [
+          { key: 'e/4' }, { key: 'd/4' }, { key: 'c/4' }, { key: 'd/4' },
+          { key: 'e/4' }, { key: 'e/4' }, { key: 'e/4', dur: 'h' },
+          { key: 'd/4' }, { key: 'd/4' }, { key: 'd/4', dur: 'h' },
+          { key: 'e/4' }, { key: 'g/4' }, { key: 'g/4', dur: 'h' },
+          { key: 'e/4' }, { key: 'd/4' }, { key: 'c/4' }, { key: 'd/4' },
+          { key: 'e/4' }, { key: 'e/4' }, { key: 'e/4' }, { key: 'e/4' },
+          { key: 'd/4' }, { key: 'd/4' }, { key: 'e/4' }, { key: 'd/4' },
+          { key: 'c/4', dur: 'w' },
+        ],
+      },
+      {
+        id: 'khuc-hoan-ca',
+        title: 'Khúc Hoan Ca',
+        origin: 'Beethoven, "Ode an die Freude" (1824) — phạm vi công cộng',
+        clef: 'treble', timeSig: '4/4', barsPerPhrase: 2,
+        // The two cadences are written as quarter-quarter-half. Beethoven set
+        // them dotted quarter, eighth, half; dotted notes are T15, so this is a
+        // simplification and is flagged as one rather than quietly passed off.
+        simplified: 'Hai chỗ kết được giản lược thành đen–đen–trắng; bản gốc là đen chấm dôi–móc đơn–trắng (chấm dôi thuộc T15).',
+        notes: [
+          { key: 'e/4' }, { key: 'e/4' }, { key: 'f/4' }, { key: 'g/4' },
+          { key: 'g/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'd/4' },
+          { key: 'c/4' }, { key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' },
+          { key: 'e/4' }, { key: 'd/4' }, { key: 'd/4', dur: 'h' },
+          { key: 'e/4' }, { key: 'e/4' }, { key: 'f/4' }, { key: 'g/4' },
+          { key: 'g/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'd/4' },
+          { key: 'c/4' }, { key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' },
+          { key: 'd/4' }, { key: 'c/4' }, { key: 'c/4', dur: 'h' },
+        ],
+      },
+    ];
+
+    let currentSong = SONGS[0];
+
+    // Where each bar starts, so a phrase can be practised on its own.
+    function songBarStarts(song) {
+      const capacity = Number(song.timeSig.split('/')[0]) * 4 / Number(song.timeSig.split('/')[1]);
+      const starts = [];
+      let beats = 0;
+      song.notes.forEach((item, i) => {
+        if (beats % capacity < 1e-9) starts.push(i);
+        beats += DURATIONS[item.dur || DEFAULT_DUR].beats;
+      });
+      return { starts, capacity, beats };
+    }
+
+    function songPhrases(song) {
+      const { starts } = songBarStarts(song);
+      const phrases = [];
+      for (let bar = 0; bar < starts.length; bar += song.barsPerPhrase) {
+        const from = starts[bar];
+        const nextBar = bar + song.barsPerPhrase;
+        const to = (nextBar < starts.length ? starts[nextBar] : song.notes.length) - 1;
+        phrases.push({ from, to, label: `Câu ${phrases.length + 1}` });
+      }
+      return phrases;
+    }
+
+    function setSong(songId) {
+      const song = SONGS.find(s => s.id === songId);
+      if (!song) {
+        console.error(`setSong: there is no song called "${songId}".`);
+        return false;
+      }
+      stopSequence();
+      currentSong = song;
+      showSong();
+      return true;
+    }
+
+    function showSong() {
+      const song = currentSong;
+      renderScoreSVG('song-score', song.notes, song.clef, 1120, 190, song.timeSig);
+
+      const origin = document.getElementById('song-origin');
+      if (origin) origin.innerText = song.simplified ? `${song.origin} · ${song.simplified}` : song.origin;
+
+      const picker = document.getElementById('song-picker');
+      if (picker) {
+        picker.innerHTML = SONGS.map(s =>
+          `<button onclick="setSong('${s.id}')" class="${s.id === song.id
+            ? 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-sm transition-all'
+            : 'px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-all'}">${s.title}</button>`
+        ).join('');
+      }
+
+      const phraseRow = document.getElementById('song-phrases');
+      if (phraseRow) {
+        phraseRow.innerHTML = songPhrases(song).map((p, i) =>
+          `<button onclick="playSongPhrase(${i})" class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-blue-50 hover:border-blue-300 transition-all">${p.label}</button>`
+        ).join('');
+      }
+    }
+
+    function playSong() {
+      return playSequence(currentSong.notes, { clef: currentSong.clef });
+    }
+
+    function playSongPhrase(index) {
+      const phrases = songPhrases(currentSong);
+      const phrase = phrases[index];
+      if (!phrase) {
+        console.error(`playSongPhrase: "${currentSong.title}" has no phrase ${index}.`);
+        return false;
+      }
+      return playSequence(currentSong.notes, {
+        clef: currentSong.clef, from: phrase.from, to: phrase.to, loop: true,
+      });
+    }
+
+    /* ---- The C major scale ---------------------------------------------
      * Only the ascending form is written down. Coming back down is the same
      * notes and the same fingers in reverse, so deriving it keeps the two from
      * ever disagreeing - and it is also why the thumb turn lands in the right
@@ -1977,6 +2173,7 @@
       buildBeatLights();
       renderDemoPhrase();
       showScale();
+      showSong();
       updatePracticeDisplay();
       setTimeout(() => scrollKeyboardTo('C4'), 200);
     };
