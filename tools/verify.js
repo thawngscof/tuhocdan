@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -1005,6 +1005,204 @@ for (const [label, map] of [
         `console.error called ${logged}x; keyboard ${after === bareKeyboard ? 'unchanged' : 'CHANGED'}`);
 }
 clearKeyFingering();
+
+/* ---- 16. the audio engine ----------------------------------------------
+ * None of this can prove a sound comes out - that still needs a browser and
+ * a pair of ears, and the backlog says so. What it does prove is the shape
+ * of the graph and the schedule: that voices meet a limiter instead of the
+ * speakers, that an envelope rises and falls in order, that a re-struck key
+ * cuts the note it left ringing, and that nothing is left running.
+ */
+
+function fakeAudio() {
+  const events = [];
+  const nodes = [];
+  let idSeq = 0;
+
+  const mkParam = (node, name) => {
+    const p = {
+      value: 0,
+      setValueAtTime(v, t) { events.push({ id: node.id, kind: node.kind, param: name, op: 'set', v, t }); p.value = v; return p; },
+      exponentialRampToValueAtTime(v, t) { events.push({ id: node.id, kind: node.kind, param: name, op: 'ramp', v, t }); p.value = v; return p; },
+      linearRampToValueAtTime(v, t) { events.push({ id: node.id, kind: node.kind, param: name, op: 'linear', v, t }); p.value = v; return p; },
+      cancelScheduledValues(t) { events.push({ id: node.id, kind: node.kind, param: name, op: 'cancel', t }); return p; },
+    };
+    return p;
+  };
+
+  const mkNode = (kind, extra) => {
+    const node = Object.assign({ id: ++idSeq, kind, out: [] }, extra || {});
+    node.connect = (dest) => { node.out.push(dest); return dest; };
+    node.disconnect = () => {};
+    nodes.push(node);
+    return node;
+  };
+
+  const ctx = {
+    currentTime: 0,
+    state: 'suspended',
+    resumed: 0,
+    resume() { ctx.resumed++; ctx.state = 'running'; },
+    createOscillator() {
+      const n = mkNode('oscillator', { started: [], stopped: [], type: null, onended: null });
+      n.frequency = mkParam(n, 'frequency');
+      n.start = (t) => n.started.push(t === undefined ? ctx.currentTime : t);
+      n.stop = (t) => n.stopped.push(t === undefined ? ctx.currentTime : t);
+      return n;
+    },
+    createGain() { const n = mkNode('gain'); n.gain = mkParam(n, 'gain'); return n; },
+    createDynamicsCompressor() {
+      const n = mkNode('compressor');
+      for (const p of ['threshold', 'ratio', 'knee', 'attack', 'release']) n[p] = mkParam(n, p);
+      return n;
+    },
+  };
+  ctx.destination = mkNode('destination');
+  return { ctx, events, nodes };
+}
+
+const audio = fakeAudio();
+global.window.AudioContext = function () { return audio.ctx; };
+
+// Run one scenario and hand back only what it did, with a guard: playTone
+// swallows exceptions, so a fake missing a method would otherwise look like
+// a pass with a stack trace scrolling past.
+function scenario(fn) {
+  const from = audio.events.length, nodesFrom = audio.nodes.length;
+  let errors = 0;
+  const realErr = console.error;
+  console.error = () => errors++;
+  let result;
+  try { result = fn(); } finally { console.error = realErr; }
+  return { result, errors, events: audio.events.slice(from), nodes: audio.nodes.slice(nodesFrom) };
+}
+
+const gainCurve = (events, id) => events.filter(e => e.id === id && e.param === 'gain');
+
+/* 16a. the first note builds the shared output chain */
+
+const first = scenario(() => playTone(440));
+check('playing a note raises no error', first.errors === 0, `${first.errors} error(s) logged`);
+check('a suspended context is resumed before playing', audio.ctx.resumed >= 1);
+
+const limiter = audio.nodes.find(n => n.kind === 'compressor');
+const master = audio.nodes.find(n => n.kind === 'gain' && n.out.includes(audio.ctx.destination));
+check('a limiter sits in the chain', Boolean(limiter));
+check('exactly one node reaches the speakers',
+      audio.nodes.filter(n => n.out.includes(audio.ctx.destination)).length === 1,
+      'a voice is wired straight to ctx.destination, bypassing the limiter');
+check('the limiter feeds the master gain, which feeds the speakers',
+      Boolean(limiter && master && limiter.out.includes(master)));
+
+/* 16b. the envelope rises and falls, in order, and never exceeds the peak */
+
+const one = scenario(() => playTone(440, { at: 10, hold: 1 }));
+const voiceGain = one.nodes.find(n => n.kind === 'gain');
+const curve = gainCurve(one.events, voiceGain.id);
+
+check('a note is shaped by an envelope, not a flat level', curve.length >= 4,
+      `${curve.length} gain event(s) - a bare on/off is back`);
+check('the envelope is scheduled in time order',
+      curve.every((e, i) => i === 0 || e.t >= curve[i - 1].t - 1e-9),
+      JSON.stringify(curve.map(e => e.t)));
+check('the envelope starts silent and ends silent',
+      curve[0].v <= 0.001 && curve[curve.length - 1].v <= 0.001,
+      `starts at ${curve[0].v}, ends at ${curve[curve.length - 1].v}`);
+check('the envelope peaks once, at the voice peak',
+      Math.max(...curve.map(e => e.v)) === VOICE_PEAK,
+      `peak ${Math.max(...curve.map(e => e.v))}, VOICE_PEAK is ${VOICE_PEAK}`);
+check('the attack rises before the decay falls',
+      curve[1].v > curve[2].v && curve[1].t < curve[2].t,
+      'attack and decay are the wrong way round');
+check('no ramp targets zero, which an exponential ramp cannot reach',
+      curve.filter(e => e.op === 'ramp').every(e => e.v > 0),
+      'an exponential ramp to 0 makes the whole envelope silently do nothing');
+
+/* 16c. a scheduled note schedules everything from the given time */
+
+const sched = scenario(() => playTone(440, { at: 25, hold: 0.5 }));
+const schedOsc = sched.nodes.find(n => n.kind === 'oscillator');
+const schedCurve = gainCurve(sched.events, sched.nodes.find(n => n.kind === 'gain').id);
+check('a scheduled note starts at the time it was given',
+      schedOsc.started.length === 1 && Math.abs(schedOsc.started[0] - 25) < 1e-9,
+      `started at ${schedOsc.started}`);
+check('a scheduled note schedules its whole envelope from that time',
+      schedCurve.every(e => e.t >= 25 - 1e-9),
+      'part of the envelope was scheduled in the past, which fires immediately');
+check('a scheduled note sets its pitch at that time too',
+      sched.events.some(e => e.param === 'frequency' && Math.abs(e.t - 25) < 1e-9));
+
+/* 16d. a hold shorter than the attack and decay still releases last */
+
+const short = scenario(() => playTone(440, { at: 40, hold: 0.001 }));
+const shortCurve = gainCurve(short.events, short.nodes.find(n => n.kind === 'gain').id);
+check('a hold shorter than the attack and decay does not fold the envelope backwards',
+      shortCurve.every((e, i) => i === 0 || e.t >= shortCurve[i - 1].t - 1e-9),
+      JSON.stringify(shortCurve.map(e => e.t)));
+
+/* 16e. every oscillator that starts is also stopped */
+
+const leaked = audio.nodes.filter(n => n.kind === 'oscillator' && n.started.length && !n.stopped.length);
+check('no oscillator is left running', leaked.length === 0, `${leaked.length} oscillator(s) never stopped`);
+const backwards = audio.nodes.filter(n => n.kind === 'oscillator' && n.started.length && n.stopped.length
+                                          && n.stopped[0] <= n.started[0]);
+check('no oscillator is told to stop before it starts', backwards.length === 0);
+
+/* 16f. striking the same key again cuts the note it left ringing */
+
+const strike1 = scenario(() => playTone(440, { at: 50, voice: 'c/4' }));
+const ringing = strike1.nodes.find(n => n.kind === 'gain');
+const strike2 = scenario(() => playTone(440, { at: 51, voice: 'c/4' }));
+const cut = strike2.events.filter(e => e.id === ringing.id);
+check('re-striking a key cancels what the old note had scheduled',
+      cut.some(e => e.op === 'cancel'),
+      'the old note plays on underneath the new one');
+check('re-striking a key fades the old note out rather than snapping it off',
+      cut.some(e => e.op === 'ramp' && e.v <= 0.001),
+      'cutting the gain instantly clicks');
+check('re-striking a key stops the old oscillator',
+      strike1.nodes.find(n => n.kind === 'oscillator').stopped.length >= 1);
+
+/* 16g. different keys do not cut each other - that is what a chord is */
+
+// Fresh voice ids: reusing one still ringing from an earlier scenario would
+// make the engine cut it, and the cut would look like a chord tearing itself up.
+const chord = scenario(() => {
+  ['chord-c', 'chord-e', 'chord-g'].forEach((k, i) => playTone(440 + i * 100, { at: 60, voice: k }));
+});
+const chordGains = chord.nodes.filter(n => n.kind === 'gain');
+check('a chord sounds three separate voices', chordGains.length === 3, `${chordGains.length} voice(s)`);
+check('no voice in a chord cancels another',
+      chord.events.filter(e => e.op === 'cancel').length === 0,
+      'the notes of a chord are cutting each other off');
+check('every voice in a chord goes through the limiter',
+      chordGains.every(g => g.out.includes(limiter)),
+      'a voice bypasses the limiter and adds straight into the output');
+check('a chord of voices cannot sum past full scale',
+      chordGains.length * VOICE_PEAK <= 1,
+      `${chordGains.length} voices at ${VOICE_PEAK} peak to ${(chordGains.length * VOICE_PEAK).toFixed(2)}`);
+
+/* 16h. a note with no pitch makes no sound and no node */
+
+const silent = scenario(() => playTone(0));
+check('a note with no pitch is ignored', silent.result === null && silent.nodes.length === 0,
+      `${silent.nodes.length} node(s) created for a note with no frequency`);
+
+/* 16i. the key remembers the note now sounding, not the one it just cut */
+
+const soloA = scenario(() => playTone(440, { at: 70, voice: 'solo' }));
+const soloB = scenario(() => playTone(550, { at: 71, voice: 'solo' }));
+const nowRinging = activeVoices.get('solo');
+check('a re-struck key tracks the new note, not the one it replaced',
+      Boolean(nowRinging) && nowRinging.gain === soloB.nodes.find(n => n.kind === 'gain')
+        && nowRinging.gain !== soloA.nodes.find(n => n.kind === 'gain'),
+      'the key is still pointing at the note that was just cut');
+
+const trackedBefore = activeVoices.size;
+scenario(() => playTone(440, { at: 80 }));
+check('a note played without a voice id is not tracked at all',
+      activeVoices.size === trackedBefore,
+      'untracked notes are piling up in the live set and will never be cleared');
 
 /* ---- summary ----------------------------------------------------------- */
 

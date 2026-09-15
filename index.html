@@ -546,6 +546,16 @@
     let currentClef = 'treble';
     let currentSelectedNote = notesData.treble[3]; // C4
     let audioCtx = null;
+    let masterGain = null;        // single output stage - see ensureAudio()
+    let masterLimiter = null;
+    const activeVoices = new Map();   // voice id -> the note currently sounding on it
+
+    // One oscillator per note shaped by a plain ADSR. The peak is deliberately
+    // low: a four-note chord at the old flat 0.3 summed past full scale and came
+    // out as a buzz, so every voice now goes through a shared limiter instead.
+    const ENVELOPE = { attack: 0.012, decay: 0.16, sustain: 0.55, release: 0.32 };
+    const VOICE_PEAK = 0.22;
+    const SILENT = 0.0001;        // exponential ramps cannot reach zero
     let quizScore = 0;
     let quizStreak = 0;
     let quizCurrentQuestion = null;
@@ -900,32 +910,92 @@
     }
 
     // Web Audio Synthesizer Engine
-    function playTone(freq) {
-      if (!freq) return;
-      try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
-        }
+    //
+    // Everything that makes a sound goes through one chain:
+    //   oscillator -> per-note ADSR gain -> limiter -> master gain -> speakers
+    // Nothing connects to ctx.destination directly. That is what keeps a chord
+    // from adding its voices together past full scale.
+    function ensureAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterLimiter = audioCtx.createDynamicsCompressor();
+        masterLimiter.threshold.setValueAtTime(-8, audioCtx.currentTime);
+        masterLimiter.ratio.setValueAtTime(12, audioCtx.currentTime);
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+        masterLimiter.connect(masterGain);
+        masterGain.connect(audioCtx.destination);
+      }
+      // A context created before the first gesture starts out suspended and
+      // stays silent until something resumes it.
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
 
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+    // Cut a note that is still sounding, quickly but not instantly - snapping the
+    // gain straight to zero clicks.
+    function releaseVoice(voiceId, when) {
+      const voice = activeVoices.get(voiceId);
+      if (!voice) return;
+      activeVoices.delete(voiceId);
+      const at = Math.max(when, audioCtx.currentTime);
+      try {
+        voice.gain.gain.cancelScheduledValues(at);
+        voice.gain.gain.setValueAtTime(Math.max(voice.gain.gain.value, SILENT), at);
+        voice.gain.gain.exponentialRampToValueAtTime(SILENT, at + 0.03);
+        voice.osc.stop(at + 0.05);
+      } catch (e) {
+        // The oscillator had already finished on its own; nothing to cut.
+      }
+    }
+
+    // opts.at    - when to start, in AudioContext time (default: now)
+    // opts.hold  - seconds to hold before the release begins
+    // opts.voice - an id, so striking the same key again cuts the note it left
+    //              ringing instead of stacking a second one on top of it
+    function playTone(freq, opts = {}) {
+      if (!freq) return null;
+      try {
+        const ctx = ensureAudio();
+        const at = opts.at === undefined ? ctx.currentTime : opts.at;
+        const hold = opts.hold === undefined ? 1.0 : opts.hold;
+        const voiceId = opts.voice === undefined ? null : opts.voice;
+
+        if (voiceId !== null) releaseVoice(voiceId, at);
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
         osc.type = 'triangle'; // Rich organ sound
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(freq, at);
 
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
+        const { attack, decay, sustain, release } = ENVELOPE;
+        const sustainLevel = Math.max(VOICE_PEAK * sustain, SILENT);
+        const releaseAt = at + Math.max(hold, attack + decay);
+        const endAt = releaseAt + release;
+
+        const g = gain.gain;
+        g.setValueAtTime(SILENT, at);
+        g.exponentialRampToValueAtTime(VOICE_PEAK, at + attack);
+        g.exponentialRampToValueAtTime(sustainLevel, at + attack + decay);
+        g.setValueAtTime(sustainLevel, releaseAt);
+        g.exponentialRampToValueAtTime(SILENT, endAt);
 
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(masterLimiter);
 
-        osc.start();
-        osc.stop(audioCtx.currentTime + 1.2);
+        osc.start(at);
+        osc.stop(endAt + 0.02);
+
+        if (voiceId !== null) {
+          const voice = { osc, gain };
+          activeVoices.set(voiceId, voice);
+          osc.onended = () => { if (activeVoices.get(voiceId) === voice) activeVoices.delete(voiceId); };
+        }
+        return { osc, gain, startsAt: at, endsAt: endAt };
       } catch (e) {
         console.error("Audio Playback Error:", e);
+        return null;
       }
     }
 
@@ -942,7 +1012,7 @@
       if (match) {
         currentSelectedNote = match;
         updatePracticeDisplay();
-        playTone(match.freq);
+        playTone(match.freq, { voice: key });
         highlightKey(key);
       }
     }

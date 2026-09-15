@@ -107,11 +107,16 @@ Phát một dãy nốt đúng tiết tấu, sáng phím đồng bộ, có tạm 
 - Lập lịch bằng `AudioContext.currentTime`, **không** dùng `setTimeout` cho thời điểm phát
 - **Phụ thuộc:** T5
 
-### T7 · Nâng chất lượng âm thanh
-Hiện tại mỗi nốt là một oscillator `triangle` + `exponentialRampToValueAtTime`, gain cứng `0.3`.
-Bấm hợp âm 3–4 nốt sẽ cộng biên độ gây méo tiếng.
-- Thêm ADSR envelope, master gain có giới hạn, cắt nốt cũ khi bấm lại cùng phím
-- **Chặn:** T8 (hợp âm) nếu không làm sẽ nghe rất tệ
+### T7 · Nâng chất lượng âm thanh — ✅ XONG
+Làm **trước T5/T6**: cả máy gõ nhịp lẫn bộ phát đều dựng trên động cơ này, sửa sau sẽ phải làm lại.
+
+Mọi thứ phát ra tiếng đều đi qua đúng một chuỗi: `oscillator → gain ADSR riêng từng nốt → limiter → master gain → loa`. **Không gì nối thẳng vào `ctx.destination`** — đó chính là thứ giữ cho hợp âm không cộng biên độ vượt mức. Đỉnh mỗi nốt hạ từ `0.3` xuống `0.22`, nên bốn nốt cùng lúc vẫn nằm trong khoảng.
+
+`playTone(freq, opts)` nhận thêm `at` (thời điểm phát, tính theo giờ của AudioContext — T6 cần), `hold`, và `voice`. Có `voice` thì bấm lại cùng phím sẽ **tắt dần** nốt cũ trong 30ms rồi mới đánh nốt mới, thay vì chồng lên nhau; tắt phụt sẽ nghe "cạch".
+
+Thêm 27 phép kiểm tra, dựng một `AudioContext` giả ghi lại mọi lời gọi lập lịch, kiểm chứng bằng 16 phép phá — bắt được cả 16.
+
+> **Giới hạn:** bộ kiểm tra này chứng minh **hình dạng đồ thị và lịch phát**, không chứng minh có tiếng kêu. Việc "âm thanh chưa test thật trên trình duyệt" ở cuối file vẫn còn nguyên.
 
 ## Giai đoạn 3 — Nội dung giảng dạy
 
@@ -172,7 +177,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 67KB / 1153 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 70KB / 1223 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
