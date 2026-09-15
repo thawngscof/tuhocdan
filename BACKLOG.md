@@ -213,9 +213,21 @@ Vẽ bằng `item.keys` của T8 (hai đầu nốt một cột, một đuôi chu
 
 Thêm 34 phép kiểm tra, kiểm chứng bằng 14 phép phá — bắt được cả 14. Phép kiểm tra đối chiếu bằng **khoảng cách tên nốt tự tính trong test**, không đọc bảng của trang.
 
-### T14 · Dấu giáng và hóa biểu
-Dữ liệu hiện chỉ có nốt thăng (`acc: "♯"`). Thêm cách ghi giáng và hóa biểu đầu khuông.
-- Cần quyết định: ghi trùng âm (C♯/D♭) hiển thị thế nào
+### T14 · Dấu giáng và hóa biểu — ✅ XONG
+
+#### Quyết định về ghi trùng âm (C♯ / D♭)
+**Phím là một chuyện, cách ghi là chuyện khác.** Bàn phím giữ nguyên một tên duy nhất theo lối thăng — một phím, một id, không nhân đôi dữ liệu — còn `item.spell: 'flat'` bảo khuông nhạc ghi đúng phím ấy theo lối kia.
+
+Nốt ghi giáng nằm ở **tên nốt phía trên**: Đô♯ trên dòng của Đô, Rê♭ ở chỗ của Rê. **Cùng tiếng, khác chỗ** — mà đó chính là thứ người mới học cần nhìn thấy. Đã dựng riêng một thẻ trong tab mẹo đọc để bày hai cách ghi cạnh nhau.
+
+Phương án bị loại: thêm hẳn các nốt ghi giáng vào `keyboardKeys`. Làm vậy thì một phím đàn có hai id, và mọi thứ tra cứu theo `key` (sáng phím, hợp âm, bài hát, số ngón) đều phải biết hai id đó là một.
+
+#### Hoá biểu
+`keySig` là tham số thứ bảy của `renderScoreSVG`. Thứ tự dấu hoá là **toàn bộ quy ước**, nên chỉ ghi một lần: thăng theo Fa–Đô–Sol–Rê–La–Mi–Si, giáng theo Si–Mi–La–Rê–Sol–Đô–Fa; số lượng dấu quyết định lấy mấy cái đầu. Vị trí ghi theo khoá Sol, khoá Fa hạ xuống hai bậc. Có sẵn C, G, D, A, F, B♭, E♭.
+
+Hoá biểu **tự chừa chỗ cho mình**: nốt và số chỉ nhịp đều dịch sang phải theo bề rộng của nó.
+
+Thêm 62 phép kiểm tra, kiểm chứng bằng 18 phép phá — bắt được cả 18. Một phép lọt lúc đầu: **không có phép nào kiểm ký hiệu hoá biểu là thăng hay giáng**, chỉ kiểm thứ tự tên nốt — nên một hoá biểu giáng viết toàn dấu thăng vẫn qua.
 
 ### T15 · Nốt chấm dôi và dấu nối — ✅ XONG
 `item.dot` và `item.tie`.
@@ -247,7 +259,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 144KB / 2900 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 151KB / 3037 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -261,7 +273,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **540 phép kiểm tra**, kiểm chứng bằng **221 phép phá có chủ đích** trên 14 bộ.
+Tổng cộng: **604 phép kiểm tra**, kiểm chứng bằng **239 phép phá có chủ đích** trên 15 bộ.
 
 ## Việc chưa kiểm chứng
 

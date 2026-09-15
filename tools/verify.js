@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -2828,6 +2828,139 @@ console.error = () => earLogged++;
 const nothingToPlay = playEarQuestion();
 console.error = earErr;
 check('replaying with no question is refused', nothingToPlay === false && earLogged === 1);
+
+/* ---- 27. flats, enharmonic spelling and key signatures -------------------
+ * The decision here is that one key has one id and two possible spellings.
+ * So the checks are about the staff moving while the sound stays put.
+ */
+
+const SHARP_KEYS = keyboardKeys.filter(k => k.key.includes('#')).map(k => k.key);
+check(`the keyboard has sharp keys to respell (${SHARP_KEYS.length})`, SHARP_KEYS.length === 20);
+
+/* 27a. a flat spelling moves the note up one letter and swaps the glyph */
+
+const yOfHead = (svg) => { const m = /translate\([-\d.]+, ([-\d.]+)\) rotate/.exec(svg); return m ? +m[1] : null; };
+const accGlyph = (svg) => { const m = /<text[^>]*fill="#2563eb"[^>]*>([^<]*)</.exec(svg); return m ? m[1] : null; };
+
+const misspelled = [];
+for (const clef of CLEFS) {
+  for (const key of SHARP_KEYS) {
+    if (!notesData[clef].some(n => n.key === key)) continue;
+    renderScoreSVG('probe', [{ key }], clef, 340, 160);
+    const sharpY = yOfHead(rendered.probe), sharpGlyph = accGlyph(rendered.probe);
+    renderScoreSVG('probe', [{ key, spell: 'flat' }], clef, 340, 160);
+    const flatY = yOfHead(rendered.probe), flatGlyph = accGlyph(rendered.probe);
+
+    if (sharpGlyph !== '♯') misspelled.push(`${clef} ${key}: sharp spelling drew "${sharpGlyph}"`);
+    if (flatGlyph !== '♭') misspelled.push(`${clef} ${key}: flat spelling drew "${flatGlyph}"`);
+    // One letter up the staff is half a space: LINE_SPACING / 2.
+    if (Math.abs((sharpY - flatY) - LINE_SPACING / 2) > 0.01) {
+      misspelled.push(`${clef} ${key}: sharp at y=${sharpY}, flat at y=${flatY} - want half a space between them`);
+    }
+  }
+}
+check('a flat spelling sits one letter higher and carries a flat', misspelled.length === 0,
+      misspelled.slice(0, 3).join('\n        '));
+
+check('the same key sounds the same whichever way it is spelled',
+      notesData.treble.find(n => n.key === 'c#/4').freq
+        === notesData.treble.find(n => n.key === 'c#/4').freq,
+      'spelling must not touch the pitch data at all');
+
+check('every sharp key has a flat name to show',
+      SHARP_KEYS.every(k => flatNameOf(k)),
+      SHARP_KEYS.filter(k => !flatNameOf(k)).join(', '));
+check('a natural key has no flat respelling', flatNameOf('c/4') === null);
+check('the flat name names the letter above', flatNameOf('c#/4') === 'D♭4' && flatNameOf('a#/3') === 'B♭3',
+      `${flatNameOf('c#/4')} and ${flatNameOf('a#/3')}`);
+
+let spellLogged = 0;
+let spellErr = console.error;
+console.error = () => spellLogged++;
+renderScoreSVG('probe', [{ key: 'c/4', spell: 'flat' }], 'treble', 340, 160);
+console.error = spellErr;
+check('asking to respell a note that has no sharp is refused',
+      spellLogged === 1 && accGlyph(rendered.probe) === null,
+      `console.error called ${spellLogged}x, glyph ${accGlyph(rendered.probe)}`);
+
+/* 27b. the key signature puts the right accidentals in the right order */
+
+const SHARP_KEY_ORDER = ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
+const FLAT_KEY_ORDER = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
+
+for (const [name, sig] of Object.entries(KEY_SIGNATURES)) {
+  const marks = keySignatureMarks(name, 'treble');
+  check(`${name}: the signature has ${sig.sharps + sig.flats} accidental(s)`,
+        marks.length === sig.sharps + sig.flats, `${marks.length}`);
+  check(`${name}: it is all sharps or all flats, never both`,
+        new Set(marks.map(m => m.glyph)).size <= 1);
+  // Checking the letters and their order says nothing about which sign is
+  // printed on them - a flat key signature written in sharps passed happily.
+  check(`${name}: the accidentals are written as ${sig.sharps ? 'sharps' : sig.flats ? 'flats' : 'nothing at all'}`,
+        marks.every(m => m.glyph === (sig.sharps ? '♯' : '♭')),
+        marks.map(m => m.letter + m.glyph).join(' '));
+  const wantOrder = (sig.sharps ? SHARP_KEY_ORDER : FLAT_KEY_ORDER).slice(0, marks.length);
+  check(`${name}: the accidentals come in the conventional order (${wantOrder.join(' ') || 'none'})`,
+        JSON.stringify(marks.map(m => m.letter)) === JSON.stringify(wantOrder),
+        marks.map(m => m.letter).join(' '));
+}
+
+check('C major has no key signature at all', keySignatureMarks('C', 'treble').length === 0);
+check('a signature with one sharp puts it on F', keySignatureMarks('G', 'treble')[0].letter === 'F');
+check('a signature with one flat puts it on B', keySignatureMarks('F', 'treble')[0].letter === 'B');
+
+// The bass clef writes the same signature two steps lower.
+for (const name of Object.keys(KEY_SIGNATURES)) {
+  const treble = keySignatureMarks(name, 'treble'), bass = keySignatureMarks(name, 'bass');
+  check(`${name}: the bass clef writes the signature two steps lower`,
+        treble.every((m, i) => bass[i].step === m.step - 2),
+        `treble ${treble.map(m => m.step).join(',')} vs bass ${bass.map(m => m.step).join(',')}`);
+}
+
+let sigLogged = 0;
+spellErr = console.error;
+console.error = () => sigLogged++;
+const noSig = keySignatureMarks('H', 'treble');
+console.error = spellErr;
+check('a key signature that does not exist is refused', noSig === null && sigLogged === 1);
+
+/* 27c. the signature is drawn, and makes room for itself */
+
+const glyphsIn = (svg) => (svg.match(/<text x="[-\d.]+" y="[-\d.]+" font-family="sans-serif" font-size="15"[^>]*>([♯♭])<\/text>/g) || []).length;
+
+renderScoreSVG('probe', [{ key: 'c/4' }], 'treble', 340, 160);
+check('no key signature is drawn unless one is asked for', glyphsIn(rendered.probe) === 0);
+const noSigFirstX = +/translate\(([-\d.]+), /.exec(rendered.probe)[1];
+
+for (const [name, sig] of Object.entries(KEY_SIGNATURES)) {
+  renderScoreSVG('probe', [{ key: 'c/4' }], 'treble', 340, 160, null, name);
+  check(`${name}: the staff draws its ${sig.sharps + sig.flats} accidental(s)`,
+        glyphsIn(rendered.probe) === sig.sharps + sig.flats,
+        `drew ${glyphsIn(rendered.probe)}`);
+  const firstX = +/translate\(([-\d.]+), /.exec(rendered.probe)[1];
+  check(`${name}: the notes move clear of the signature`,
+        sig.sharps + sig.flats === 0 ? firstX === noSigFirstX : firstX > noSigFirstX,
+        `first note at x=${firstX}, with no signature it sits at ${noSigFirstX}`);
+}
+
+renderScoreSVG('probe', [{ key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' }, { key: 'f/4' }], 'treble', 340, 160, '4/4', 'D');
+check('a key signature and a time signature can share a staff',
+      glyphsIn(rendered.probe) === 2 && /<text x="[\d.]+" y="60"[^>]*>4<\/text>/.test(rendered.probe),
+      'the signature and the numerals are not both there');
+check('the numerals move over to make room for the signature',
+      /<text x="84" y="60"/.test(rendered.probe),
+      'the time signature did not shift by the width of the two sharps');
+
+const sigClipped = [];
+for (const clef of CLEFS) {
+  for (const name of Object.keys(KEY_SIGNATURES)) {
+    renderScoreSVG('probe', [{ key: 'c/4' }], clef, 340, 160, null, name);
+    const clip = clipReport(rendered.probe);
+    if (clip) sigClipped.push(`${clef} ${name}: ${clip}`);
+  }
+}
+check('a key signature never falls outside the fitted viewBox', sigClipped.length === 0,
+      sigClipped.slice(0, 3).join('; '));
 
 /* ---- summary ----------------------------------------------------------- */
 

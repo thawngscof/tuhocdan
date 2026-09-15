@@ -586,6 +586,35 @@
         </div>
 
       </div>
+    
+      <!-- Flats and key signatures -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h2 class="text-xl font-bold text-slate-900 mb-1">Dấu Giáng và Hoá Biểu</h2>
+        <p class="text-sm text-slate-500 mb-5">Cùng một phím đàn có thể ghi hai cách. Thăng thì lấy tên nốt bên dưới, giáng thì lấy tên nốt bên trên — cùng tiếng, khác chỗ trên khuông.</p>
+
+        <div class="grid sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Đô thăng — ghi trên dòng của Đô</p>
+            <div id="spell-sharp" class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[160px]"></div>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Rê giáng — cùng phím ấy, ghi ở chỗ của Rê</p>
+            <div id="spell-flat" class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[160px]"></div>
+          </div>
+        </div>
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Hoá biểu — dấu hoá đặt ngay đầu khuông, có giá trị cho cả bài</p>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button onclick="showKeySignature('C')" class="chord-btn">Đô trưởng</button>
+          <button onclick="showKeySignature('G')" class="chord-btn">Sol trưởng</button>
+          <button onclick="showKeySignature('D')" class="chord-btn">Rê trưởng</button>
+          <button onclick="showKeySignature('F')" class="chord-btn">Fa trưởng</button>
+          <button onclick="showKeySignature('Bb')" class="chord-btn">Si♭ trưởng</button>
+        </div>
+        <div id="keysig-score" class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[170px]"></div>
+        <p id="keysig-caption" class="text-sm font-semibold text-slate-600 text-center mt-2"></p>
+      </div>
+
     </section>
 
     <!-- TAB 3: QUIZ REFLEX GAME -->
@@ -886,7 +915,7 @@
     let keyFingering = {};
 
     // Generalized SVG Pure Renderer Function
-    function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null) {
+    function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null, keySig = null) {
       const container = document.getElementById(containerId);
       if (!container) return;
 
@@ -913,7 +942,11 @@
         }
       }
 
-      const startX = meter ? 92 : 65;   // leave room for the numerals
+      // Key signature accidentals sit between the clef and the time signature.
+      const keyMarks = keySig ? (keySignatureMarks(keySig, clef) || []) : [];
+      const keyWidth = keyMarks.length * 9;
+
+      const startX = (meter ? 92 : 65) + keyWidth;
       
       // Vertical extent actually drawn; the viewBox is fitted to it at the end so
       // notes far above/below the staff (C2, C6) stay visible instead of clipping.
@@ -937,12 +970,18 @@
         svg += `<line x1="${width - 15}" y1="${topMargin}" x2="${width - 15}" y2="${lineY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
       }
 
+      keyMarks.forEach((mark, i) => {
+        const y = yAtStep(mark.step);
+        seen(y - 6); seen(y + 6);
+        svg += `<text x="${50 + i * 9}" y="${y + 4}" font-family="sans-serif" font-size="15" font-weight="bold" fill="#0f172a">${mark.glyph}</text>`;
+      });
+
       // The numerals stack up after the clef: the count centred between lines 3
       // and 5, the unit between lines 1 and 3.
       if (meter) {
         const sigAttrs = `font-family="Inter, sans-serif" font-size="22" font-weight="800" fill="${INK}" text-anchor="middle" dominant-baseline="central"`;
-        svg += `<text x="66" y="${yAtStep(6)}" ${sigAttrs}>${meter.top}</text>`;
-        svg += `<text x="66" y="${yAtStep(2)}" ${sigAttrs}>${meter.bottom}</text>`;
+        svg += `<text x="${66 + keyWidth}" y="${yAtStep(6)}" ${sigAttrs}>${meter.top}</text>`;
+        svg += `<text x="${66 + keyWidth}" y="${yAtStep(2)}" ${sigAttrs}>${meter.bottom}</text>`;
       }
 
       // Draw Clef Symbol (Vector SVG for Treble and Bass)
@@ -1063,7 +1102,15 @@
         if (stack.length === 0) return;
         stack.sort((a, b) => a.step - b.step);
 
-        const steps = stack.map(n => n.step);
+        // Spelling a sharp as a flat moves it onto the letter above: C# sits on
+        // the C line, Db on the D line. Same key, different place on the staff.
+        const spellFlat = item.spell === 'flat';
+        if (spellFlat && !stack.every(n => n.acc)) {
+          console.error(`renderScoreSVG: "${item.key}" has no sharp to respell as a flat.`);
+        }
+        const useFlat = spellFlat && stack.every(n => n.acc);
+
+        const steps = stack.map(n => (useFlat ? flatSpelledStep(n.step) : n.step));
         const lowStep = steps[0], highStep = steps[steps.length - 1];
         const yOfStep = (s) => lineY1 - s * (lineSpacing / 2);
         const noteY = yOfStep(highStep);      // top of the stack, for the finger row
@@ -1098,7 +1145,7 @@
         // Accidentals stack leftwards, top note first, so they do not collide.
         let accSlot = 0;
         for (let i = stack.length - 1; i >= 0; i--) {
-          const accChar = (stack.length === 1 ? item.acc : null) || stack[i].acc;
+          const accChar = useFlat ? '♭' : ((stack.length === 1 ? item.acc : null) || stack[i].acc);
           if (!accChar) continue;
           svg += `<text x="${noteX - 16 - accSlot * 11}" y="${yOfStep(steps[i]) + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
           accSlot++;
@@ -2239,6 +2286,94 @@
       return true;
     }
 
+    /* ---- Flats, enharmonic spelling and key signatures --------------------
+     * The decision the backlog left open: how to show C# and Db, which are the
+     * same key on the keyboard but two different notes on the staff.
+     *
+     * The answer taken here is that the KEY is one thing and the SPELLING is
+     * another. The keyboard keeps its single sharp-spelled name - one key, one
+     * id, no duplicate data - and `item.spell: 'flat'` asks the staff to write
+     * that same key the other way. A flat-spelled note sits on the letter
+     * ABOVE, with a flat: C# is on the C line, Db on the D line. Same sound,
+     * different place, which is exactly the thing a beginner has to see.
+     */
+    const FLAT_SPELLING = { 'c#': 'd♭', 'd#': 'e♭', 'f#': 'g♭', 'g#': 'a♭', 'a#': 'b♭' };
+
+    // How far up the staff a flat spelling moves: onto the next letter.
+    function flatSpelledStep(step) { return step + 1; }
+
+    function flatNameOf(key) {
+      const m = /^([a-g]#)\/(\d)$/.exec(String(key));
+      if (!m || !FLAT_SPELLING[m[1]]) return null;
+      return FLAT_SPELLING[m[1]].toUpperCase().replace('♭', '♭') + m[2];
+    }
+
+    /* Key signatures. The accidentals go in a fixed order at fixed heights -
+     * that order is the whole convention, so it is written down once here and
+     * the count decides how many of them are drawn.
+     *
+     * Steps are given for the treble clef; the bass clef sits two steps lower
+     * for the same conventional position.
+     */
+    const SHARP_ORDER = [
+      { letter: 'F', step: 8 }, { letter: 'C', step: 5 }, { letter: 'G', step: 9 },
+      { letter: 'D', step: 6 }, { letter: 'A', step: 3 }, { letter: 'E', step: 7 },
+      { letter: 'B', step: 4 },
+    ];
+    const FLAT_ORDER = [
+      { letter: 'B', step: 4 }, { letter: 'E', step: 7 }, { letter: 'A', step: 3 },
+      { letter: 'D', step: 6 }, { letter: 'G', step: 2 }, { letter: 'C', step: 5 },
+      { letter: 'F', step: 1 },
+    ];
+
+    const KEY_SIGNATURES = {
+      'C':  { sharps: 0, flats: 0, label: 'Đô trưởng' },
+      'G':  { sharps: 1, flats: 0, label: 'Sol trưởng' },
+      'D':  { sharps: 2, flats: 0, label: 'Rê trưởng' },
+      'A':  { sharps: 3, flats: 0, label: 'La trưởng' },
+      'F':  { sharps: 0, flats: 1, label: 'Fa trưởng' },
+      'Bb': { sharps: 0, flats: 2, label: 'Si giáng trưởng' },
+      'Eb': { sharps: 0, flats: 3, label: 'Mi giáng trưởng' },
+    };
+
+    // Which accidentals a key signature puts on the staff, and where.
+    function keySignatureMarks(keyName, clef) {
+      const sig = KEY_SIGNATURES[keyName];
+      if (!sig) {
+        console.error(`keySignatureMarks: there is no key signature for "${keyName}".`);
+        return null;
+      }
+      const shift = clef === 'bass' ? -2 : 0;
+      const order = sig.sharps ? SHARP_ORDER : FLAT_ORDER;
+      const glyph = sig.sharps ? '♯' : '♭';
+      return order.slice(0, sig.sharps || sig.flats)
+                  .map(mark => ({ letter: mark.letter, step: mark.step + shift, glyph }));
+    }
+
+
+    // Both spellings of one key, side by side, and the common key signatures.
+    function renderSpellingDemo() {
+      renderScoreSVG('spell-sharp', [{ key: 'c#/4', dur: 'h', label: 'Đô♯' }], 'treble', 300, 170);
+      renderScoreSVG('spell-flat', [{ key: 'c#/4', dur: 'h', spell: 'flat', label: 'Rê♭' }], 'treble', 300, 170);
+    }
+
+    function showKeySignature(keyName) {
+      const sig = KEY_SIGNATURES[keyName];
+      if (!sig) {
+        console.error(`showKeySignature: there is no key signature for "${keyName}".`);
+        return false;
+      }
+      renderScoreSVG('keysig-score', [{ key: 'c/4', dur: 'w' }], 'treble', 340, 170, null, keyName);
+      const caption = document.getElementById('keysig-caption');
+      if (caption) {
+        const count = sig.sharps + sig.flats;
+        caption.innerText = count === 0
+          ? `${sig.label} — không dấu hoá nào`
+          : `${sig.label} — ${count} dấu ${sig.sharps ? 'thăng' : 'giáng'}`;
+      }
+      return true;
+    }
+
     /* ---- Ear training -----------------------------------------------------
      * Same shape as the note-reading game, but the question arrives through
      * the ears: hear a note and name it, or hear two notes and name the
@@ -2886,6 +3021,8 @@
       buildBeatLights();
       buildIntervalButtons();
       renderEarTraining();
+      renderSpellingDemo();
+      showKeySignature('G');
       lessonProgress = loadProgress();
       renderLessonList();
       renderLessonDetail();
