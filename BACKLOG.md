@@ -24,7 +24,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Hình nốt (tròn, trắng, đen, móc đơn) | ✅ T1 |
 | Dấu lặng | ✅ T2 |
 | Số chỉ nhịp, vạch nhịp, ô nhịp | ✅ T3 |
-| Tiết tấu, máy gõ nhịp | máy gõ nhịp ✅ T5 |
+| Tiết tấu, máy gõ nhịp | ✅ T5 + T6 |
 | Hợp âm tay trái | chưa có — thiếu sót lớn nhất với organ |
 | Gam, ngón bấm | số ngón ✅ T4, gam chưa có |
 | Bài hát tập chơi | chưa có |
@@ -110,9 +110,18 @@ Giao diện: thẻ "Máy Gõ Nhịp" trong tab Luyện Tập — nút bắt đ�
 
 Thêm 43 phép kiểm tra, kiểm chứng bằng 20 phép phá — bắt được cả 20. **Ba phép lúc đầu không bị bắt đúng nghĩa:** hai phép làm rò `setInterval` chỉ khiến tiến trình treo (bộ test không phát hiện, nó chỉ chết), và phép "scheduler chạy tiếp sau khi dừng" lọt hẳn vì lúc kiểm tra thì chưa có phách nào tới hạn. Nay `verify.js` đếm timer đang mở (và `unref` chúng), còn phép kiểm tra cho đồng hồ chạy vượt qua phách đang chờ trước khi đo.
 
-### T6 · Phát chuỗi nốt theo trường độ
-Phát một dãy nốt đúng tiết tấu, sáng phím đồng bộ, có tạm dừng / tốc độ chậm / lặp từng câu.
-- Lập lịch bằng `AudioContext.currentTime`, **không** dùng `setTimeout` cho thời điểm phát
+### T6 · Phát chuỗi nốt theo trường độ — ✅ XONG
+`sequenceSchedule(items, bpm, startAt)` tách riêng thành **hàm thuần** — không audio, không DOM. Tiết tấu là phần đáng kiểm tra nhất, và chỉ kiểm tra được khi nó đứng một mình. Dấu lặng chiếm thời gian như mọi mục khác; thiếu `dur` thì là nốt đen, đúng như mọi nơi.
+
+`playSequence(items, { clef, bpm, loop, from, to })` — `from`/`to` cho phép **lặp từng câu**. 30–200 BPM. Nốt giữ 92% ô của nó rồi mới nhả, nên hai nốt trùng cao độ liền nhau vẫn nghe tách bạch (có test đo: điểm nhả phải đến trước lúc nốt kế bắt đầu).
+
+`pauseSequence()` **phải tắt tiếng những nốt đã lập lịch** — chúng đang nằm ở tương lai của đồng hồ audio và sẽ kêu bất kể giao diện nghĩ gì. Nhớ vị trí đang tới, `resumeSequence()` phát tiếp từ đó.
+
+Nốt không có trong khóa đang dùng: báo lỗi, để im lặng, **vẫn giữ nguyên thời lượng** — đoạn nhạc không co lại. Im lặng thì nghe ra, nốt sai thì không.
+
+Giao diện: thẻ "Nghe Một Câu Nhạc" — hai ô nhịp 4/4 dùng đủ nốt đen, móc đơn, trắng, dấu lặng và số ngón. **Đây là chỗ đầu tiên T1–T4 thật sự hiện ra trên trang** (trước đó chỉ tồn tại trong test).
+
+Thêm 45 phép kiểm tra, kiểm chứng bằng 19 phép phá — bắt được cả 19. Một phép lọt: chốt chặn "đoạn rỗng" hoá ra **không gánh việc đúng đắn** (chốt kiểm tra phạm vi câu bắt luôn rồi), nó chỉ tồn tại để cho thông báo dễ hiểu — nên phép kiểm tra nay kiểm đúng câu chữ đó.
 - **Phụ thuộc:** T5
 
 ### T7 · Nâng chất lượng âm thanh — ✅ XONG
@@ -185,7 +194,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 78KB / 1421 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 87KB / 1656 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG

@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -1418,6 +1418,195 @@ check('only the downbeat light is marked as the accent',
       dots.join(' '));
 setMetronomeBeatsPerBar(4);
 stopMetronome();
+
+/* ---- 18. playing a passage in time --------------------------------------
+ * sequenceSchedule is pure, so the timing is checked directly against
+ * arithmetic on beats and tempo rather than by watching the audio graph.
+ */
+
+const beatsOfDur = { w: 4, h: 2, q: 1, e: 0.5 };   // the test's own copy
+const PASSAGE = [
+  { key: 'c/4', dur: 'q' }, { key: 'd/4', dur: 'e' }, { rest: true, dur: 'h' },
+  { key: 'e/4', dur: 'w' }, { key: 'f/4' },
+];
+
+/* 18a. every item starts when the ones before it have finished */
+
+const plan = sequenceSchedule(PASSAGE, 120, 10);
+const secPerBeat = 0.5;                            // 120 BPM
+let wantAt = 10;
+const timing = [];
+for (const item of PASSAGE) {
+  timing.push(wantAt);
+  wantAt += beatsOfDur[item.dur || 'q'] * secPerBeat;
+}
+check('a passage is laid out end to end, each item after the last',
+      plan.every((e, i) => Math.abs(e.at - timing[i]) < 1e-9),
+      `times ${plan.map(e => e.at).join(', ')}, want ${timing.join(', ')}`);
+check('each item lasts as long as its note is worth',
+      plan.every((e, i) => Math.abs(e.seconds - beatsOfDur[PASSAGE[i].dur || 'q'] * secPerBeat) < 1e-9),
+      plan.map(e => e.seconds).join(', '));
+check('a rest takes up its time like anything else',
+      Math.abs(plan[2].seconds - 2 * secPerBeat) < 1e-9,
+      `the half rest lasts ${plan[2].seconds}s, want ${2 * secPerBeat}s`);
+check('an item with no duration is a quarter note, as everywhere else',
+      Math.abs(plan[4].seconds - secPerBeat) < 1e-9);
+
+/* 18b. tempo scales the whole passage and nothing else */
+
+const slow = sequenceSchedule(PASSAGE, 60, 0);
+const fast = sequenceSchedule(PASSAGE, 120, 0);
+check('halving the tempo doubles every duration',
+      slow.every((e, i) => Math.abs(e.seconds - fast[i].seconds * 2) < 1e-9));
+check('halving the tempo doubles the length of the passage',
+      Math.abs((slow[4].at + slow[4].seconds) - 2 * (fast[4].at + fast[4].seconds)) < 1e-9);
+check('the passage starts where it was told to, whatever the tempo',
+      sequenceSchedule(PASSAGE, 77, 42)[0].at === 42);
+
+/* 18c. the tempo range is enforced */
+
+for (const bpm of [30, 90, 200]) check(`playback at ${bpm} BPM is accepted`, setPlaybackBpm(bpm) === true);
+for (const bpm of [29, 201, NaN, '90']) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const took = setPlaybackBpm(bpm);
+  console.error = realErr;
+  check(`playback at ${typeof bpm === 'string' ? `"${bpm}"` : String(bpm)} BPM is refused`, took === false && logged === 1);
+}
+setPlaybackBpm(120);
+
+/* 18d. playing a passage schedules a note per pitch and silence per rest */
+
+audio.ctx.currentTime = 1000;
+const played = scenario(() => playSequence(PASSAGE, { clef: 'treble', bpm: 120 }));
+check('playing a passage raises no error', played.errors === 0);
+const voices = played.nodes.filter(n => n.kind === 'oscillator');
+check('a rest schedules no sound', voices.length === 4, `${voices.length} note(s) sounded, want 4 for 5 items with one rest`);
+check('every note in a passage is scheduled in the future',
+      voices.every(o => o.started[0] >= 1000),
+      'a note was scheduled in the past and sounded the moment it was queued');
+check('the notes are scheduled in the order they are written',
+      voices.every((o, i) => i === 0 || o.started[0] > voices[i - 1].started[0]),
+      voices.map(o => o.started[0]).join(', '));
+// The sustain is held until a setValueAtTime late in the envelope; that is
+// where the release begins, and it has to fall before the next item starts.
+const releaseStarts = voices.map(osc => {
+  const gain = played.nodes.find(n => n.kind === 'gain' && n.id === osc.id + 1);
+  const sets = played.events.filter(e => e.id === gain.id && e.param === 'gain' && e.op === 'set');
+  return { at: osc.started[0], releaseAt: sets[sets.length - 1].t };
+});
+const overrun = releaseStarts.filter((v, i) => {
+  const next = releaseStarts[i + 1];
+  return next && v.releaseAt >= next.at;
+});
+check('a note begins releasing before the next one starts, so a repeat re-articulates',
+      releaseStarts.every(v => v.releaseAt > v.at) && overrun.length === 0,
+      overrun.length ? `${overrun.length} note(s) still at full sustain when the next one begins`
+                     : 'a note never reaches its release');
+stopSequence();
+
+/* 18e. a phrase can be played on its own */
+
+audio.ctx.currentTime = 1100;
+const phrase = scenario(() => playSequence(PASSAGE, { clef: 'treble', bpm: 120, from: 1, to: 3 }));
+check('a phrase plays only the items inside it',
+      phrase.nodes.filter(n => n.kind === 'oscillator').length === 2,
+      'want 2 sounding notes from items 1-3, one of which is a rest');
+check('a phrase starts its clock at the first item of the phrase',
+      player.schedule.length === 3 && player.schedule[0].index === 1,
+      `schedule covers ${player.schedule.map(e => e.index).join(', ')}`);
+stopSequence();
+
+for (const [from, to] of [[-1, 2], [0, 99], [3, 1], [1.5, 2]]) {
+  let logged = 0;
+  const realErr = console.error;
+  console.error = () => logged++;
+  const took = playSequence(PASSAGE, { from, to });
+  console.error = realErr;
+  check(`a phrase of ${from}-${to} is refused`, took === false && logged === 1 && player.playing === false);
+}
+
+/* 18f. an empty passage, and a note the clef does not have */
+
+// The range guard below would also reject an empty passage, so what this
+// check is really for is the message: every other refusal in this file says
+// plainly what was wrong, and "0--1 is not a phrase inside a passage of 0" is
+// not that. Assert the wording, since that is the only thing the guard buys.
+const emptySaid = [];
+let realErr = console.error;
+console.error = (m) => emptySaid.push(String(m));
+const emptyTook = playSequence([]);
+console.error = realErr;
+check('an empty passage is refused',
+      emptyTook === false && emptySaid.length === 1 && player.playing === false);
+check('an empty passage is refused in plain words, not as a bad phrase range',
+      emptySaid.length === 1 && /nothing to play/.test(emptySaid[0]),
+      emptySaid[0]);
+
+audio.ctx.currentTime = 1200;
+let unknownLogged = 0;
+realErr = console.error;
+console.error = () => unknownLogged++;
+playSequence([{ key: 'c/4' }, { key: 'zz/9' }, { key: 'd/4' }], { clef: 'treble', bpm: 120 });
+console.error = realErr;
+check('a note the clef does not have is reported and left silent',
+      unknownLogged === 1 && player.schedule.length === 3,
+      `logged ${unknownLogged}x, schedule covers ${player.schedule.length} item(s)`);
+check('the silence still takes up its time, so the rest of the passage keeps its place',
+      Math.abs(player.schedule[2].at - (player.schedule[0].at + 1.0)) < 1e-9,
+      'the passage closed up over the missing note');
+stopSequence();
+
+/* 18g. pause remembers where it was, and silences what was already scheduled */
+
+audio.ctx.currentTime = 1300;
+playSequence(PASSAGE, { clef: 'treble', bpm: 120 });
+audio.ctx.currentTime = 1300 + 0.1 + 0.5 + 0.25 + 0.1;    // part-way through the rest
+const stillSounding = Array.from(activeVoices.keys()).filter(k => String(k).startsWith('seq-'));
+check('playing leaves notes scheduled ahead of the moment', stillSounding.length > 0);
+
+const paused = scenario(() => pauseSequence());
+check('pausing reports that it paused', paused.result === true && player.playing === false);
+check('pausing silences the notes already sitting in the audio clock',
+      Array.from(activeVoices.keys()).filter(k => String(k).startsWith('seq-')).length === 0,
+      'scheduled notes will keep sounding after the pause');
+check('pausing leaves no wake-up timer behind', player.timer === null);
+check('pausing remembers the item it had reached', player.cursor === 2,
+      `cursor at ${player.cursor}, want 2 - the rest that was sounding`);
+
+const resumed = scenario(() => resumeSequence());
+check('resuming reports that it resumed', resumed.result === true && player.playing === true);
+check('resuming picks up from where it paused rather than the top',
+      player.schedule.length === 3 && player.schedule[0].index === 2,
+      `resumed at item ${player.schedule.length ? player.schedule[0].index : 'none'}, want 2`);
+stopSequence();
+check('stopping rewinds to the start of the phrase', player.cursor === player.from);
+check('pausing a passage that is not playing does nothing', pauseSequence() === false);
+
+/* 18h. looping goes back round instead of stopping */
+
+audio.ctx.currentTime = 1400;
+playSequence(PASSAGE, { clef: 'treble', bpm: 120, loop: true });
+const firstEnd = player.endsAt;
+audio.ctx.currentTime = firstEnd + 0.01;
+scenario(() => playerTick());
+check('a looping passage carries on past its end',
+      player.playing === true && player.endsAt > firstEnd,
+      'the loop stopped at the end of the first time through');
+check('a loop starts again from the top of the phrase',
+      player.schedule[0].index === player.from);
+stopSequence();
+
+audio.ctx.currentTime = 1500;
+playSequence(PASSAGE, { clef: 'treble', bpm: 120, loop: false });
+audio.ctx.currentTime = player.endsAt + 0.01;
+scenario(() => playerTick());
+check('a passage that is not looping stops at the end',
+      player.playing === false && player.timer === null);
+
+check('playback leaves no wake-up timer behind', intervalsOpen === 0,
+      `${intervalsOpen} interval(s) still running`);
 
 /* ---- summary ----------------------------------------------------------- */
 

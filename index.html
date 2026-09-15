@@ -283,6 +283,47 @@
         </div>
       </div>
 
+      <!-- Passage playback -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Nghe Một Câu Nhạc</h2>
+            <p class="text-sm text-slate-500">Hai ô nhịp 4/4 — nốt đen, nốt móc đơn, nốt trắng và dấu lặng. Phím sáng theo từng nốt.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="player-toggle" onclick="toggleDemoPlayback()"
+                    class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm hover:bg-blue-700 transition-all">
+              Phát
+            </button>
+            <button onclick="stopSequence()"
+                    class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-all">
+              Dừng
+            </button>
+          </div>
+        </div>
+
+        <div id="demo-score" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[170px] mb-5">
+          <!-- SVG injected in JS -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-5 sm:items-end">
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-1">
+              <label for="player-bpm" class="text-xs font-bold uppercase tracking-wider text-slate-500">Tốc độ phát</label>
+              <span id="player-bpm-value" class="text-sm font-bold text-blue-600">90 BPM</span>
+            </div>
+            <input id="player-bpm" type="range" min="30" max="200" value="90" step="1"
+                   oninput="setPlaybackBpm(Number(this.value))"
+                   class="w-full accent-blue-600">
+          </div>
+
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 sm:pb-1">
+            <input id="player-loop" type="checkbox" onchange="player.loop = this.checked" class="accent-blue-600 w-4 h-4">
+            Lặp lại câu
+          </label>
+        </div>
+      </div>
+
     </section>
 
     <!-- TAB 2: VISUAL GUIDES -->
@@ -1176,6 +1217,199 @@
       metronome.frame = requestAnimationFrame(metronomeFrame);
     }
 
+    /* ---- Playing a passage in time ---------------------------------------
+     * Same rule as the metronome: the timer only wakes us up, every note is
+     * scheduled against AudioContext.currentTime.
+     */
+    const PLAYBACK_BPM = { min: 30, max: 200 };
+    const player = {
+      playing: false, items: [], clef: 'treble', bpm: 90, loop: false,
+      from: 0, to: 0, cursor: 0, schedule: [], queue: [], endsAt: 0, timer: null,
+    };
+
+    // Absolute times for a passage. Deliberately pure - no audio, no DOM. The
+    // timing is the part worth checking, and it is only checkable on its own.
+    function sequenceSchedule(items, bpm, startAt) {
+      const secPerBeat = 60 / bpm;
+      let at = startAt;
+      return items.map((item, index) => {
+        const beats = (DURATIONS[item.dur || DEFAULT_DUR] || DURATIONS[DEFAULT_DUR]).beats;
+        const entry = { index, item, at, seconds: beats * secPerBeat };
+        at += entry.seconds;
+        return entry;
+      });
+    }
+
+    function setPlaybackBpm(bpm) {
+      if (!Number.isFinite(bpm) || bpm < PLAYBACK_BPM.min || bpm > PLAYBACK_BPM.max) {
+        console.error(`setPlaybackBpm: ${bpm} is outside ${PLAYBACK_BPM.min}-${PLAYBACK_BPM.max} BPM - ignored.`);
+        return false;
+      }
+      player.bpm = bpm;
+      const label = document.getElementById('player-bpm-value');
+      if (label) label.innerText = `${bpm} BPM`;
+      return true;
+    }
+
+    // Lay down every note from `fromIndex` to the end of the phrase.
+    function schedulePhraseFrom(fromIndex) {
+      const ctx = ensureAudio();
+      const slice = player.items.slice(fromIndex, player.to + 1);
+      const schedule = sequenceSchedule(slice, player.bpm, ctx.currentTime + 0.1);
+
+      player.schedule = schedule.map(e => ({ ...e, index: e.index + fromIndex }));
+      player.queue = [];
+
+      for (const entry of player.schedule) {
+        if (entry.item.rest) { player.queue.push({ index: entry.index, at: entry.at, key: null }); continue; }
+        const note = notesData[player.clef].find(n => n.key === entry.item.key);
+        if (!note) {
+          // Same rule as the staff: refuse to guess. The silence is audible,
+          // which is the point - a wrong note would not be.
+          console.error(`playSequence: no "${player.clef}" entry for key "${entry.item.key}" - skipped.`);
+          player.queue.push({ index: entry.index, at: entry.at, key: null });
+          continue;
+        }
+        // Stop just short of the next note so repeated pitches re-articulate.
+        playTone(note.freq, { at: entry.at, hold: entry.seconds * 0.92, voice: `seq-${entry.index}` });
+        player.queue.push({ index: entry.index, at: entry.at, key: entry.item.key });
+      }
+
+      const last = player.schedule[player.schedule.length - 1];
+      player.endsAt = last ? last.at + last.seconds : ctx.currentTime;
+    }
+
+    function silenceSequenceVoices() {
+      for (const id of Array.from(activeVoices.keys())) {
+        if (String(id).startsWith('seq-')) releaseVoice(id, audioCtx ? audioCtx.currentTime : 0);
+      }
+    }
+
+    function playerTick() {
+      if (!player.playing) return;
+      const now = ensureAudio().currentTime;
+
+      let lit;
+      while (player.queue.length && player.queue[0].at <= now) lit = player.queue.shift();
+      if (lit !== undefined) {
+        player.cursor = lit.index;
+        setPlaybackHighlight(lit.key);
+      }
+
+      if (now >= player.endsAt) {
+        if (player.loop) {
+          player.cursor = player.from;
+          schedulePhraseFrom(player.from);
+        } else {
+          stopSequence();
+        }
+      }
+    }
+
+    function playSequence(items, opts = {}) {
+      stopSequence();
+      if (!Array.isArray(items) || items.length === 0) {
+        console.error('playSequence: there is nothing to play.');
+        return false;
+      }
+      if (opts.bpm !== undefined && !setPlaybackBpm(opts.bpm)) return false;
+
+      const from = opts.from === undefined ? 0 : opts.from;
+      const to = opts.to === undefined ? items.length - 1 : opts.to;
+      if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to >= items.length || from > to) {
+        console.error(`playSequence: ${from}-${to} is not a phrase inside a passage of ${items.length} - ignored.`);
+        return false;
+      }
+
+      player.items = items;
+      player.clef = opts.clef || player.clef;
+      player.loop = Boolean(opts.loop);
+      player.from = from;
+      player.to = to;
+      player.cursor = from;
+      player.playing = true;
+
+      schedulePhraseFrom(from);
+      player.timer = setInterval(playerTick, 25);
+      setPlayerButtons();
+      return true;
+    }
+
+    // Pausing has to silence what is already scheduled: those notes are sitting
+    // in the audio clock's future and will sound whatever the UI thinks.
+    function pauseSequence() {
+      if (!player.playing) return false;
+      const now = ensureAudio().currentTime;
+      const sounding = player.schedule.filter(e => e.at <= now).pop();
+      player.cursor = sounding ? sounding.index : player.from;
+      player.playing = false;
+      if (player.timer !== null) clearInterval(player.timer);
+      player.timer = null;
+      silenceSequenceVoices();
+      player.queue = [];
+      setPlaybackHighlight(null);
+      setPlayerButtons();
+      return true;
+    }
+
+    function resumeSequence() {
+      if (player.playing || !player.items.length) return false;
+      player.playing = true;
+      schedulePhraseFrom(player.cursor);
+      player.timer = setInterval(playerTick, 25);
+      setPlayerButtons();
+      return true;
+    }
+
+    function stopSequence() {
+      if (player.timer !== null) clearInterval(player.timer);
+      player.timer = null;
+      player.playing = false;
+      player.queue = [];
+      player.schedule = [];
+      player.cursor = player.from;
+      silenceSequenceVoices();
+      setPlaybackHighlight(null);
+      setPlayerButtons();
+    }
+
+    function setPlaybackHighlight(key) {
+      document.querySelectorAll('.white-key, .black-key').forEach(el => el.classList.remove('active'));
+      if (!key) return;
+      const el = document.getElementById(`key-${key.replace('/', '_')}`);
+      if (el) el.classList.add('active');
+    }
+
+    function setPlayerButtons() {
+      const btn = document.getElementById('player-toggle');
+      if (btn) btn.innerText = player.playing ? 'Tạm dừng' : 'Phát';
+    }
+
+    // A plain reading exercise, not a tune: two bars of 4/4 that between them
+    // use every note shape and rest the renderer knows, so the passage doubles
+    // as the first place any of T1-T4 is visible on the page.
+    const DEMO_PHRASE = [
+      { key: 'c/4', dur: 'q', finger: 1 },
+      { key: 'd/4', dur: 'q', finger: 2 },
+      { key: 'e/4', dur: 'q', finger: 3 },
+      { rest: true, dur: 'q' },
+      { key: 'e/4', dur: 'e', finger: 3 },
+      { key: 'f/4', dur: 'e', finger: 4 },
+      { key: 'g/4', dur: 'h', finger: 5 },
+      { rest: true, dur: 'q' },
+    ];
+
+    function renderDemoPhrase() {
+      renderScoreSVG('demo-score', DEMO_PHRASE, 'treble', 520, 170, '4/4');
+    }
+
+    function toggleDemoPlayback() {
+      if (player.playing) { pauseSequence(); return; }
+      if (player.items === DEMO_PHRASE && player.cursor > player.from) { resumeSequence(); return; }
+      const loopBox = document.getElementById('player-loop');
+      playSequence(DEMO_PHRASE, { clef: 'treble', loop: Boolean(loopBox && loopBox.checked) });
+    }
+
     function buildBeatLights() {
       const row = document.getElementById('metronome-beats');
       if (!row) return;
@@ -1413,6 +1647,7 @@
     window.onload = function() {
       buildPianoKeyboard();
       buildBeatLights();
+      renderDemoPhrase();
       updatePracticeDisplay();
       setTimeout(() => scrollKeyboardTo('C4'), 200);
     };
