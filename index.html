@@ -527,6 +527,16 @@
     let quizStreak = 0;
     let quizCurrentQuestion = null;
 
+    // Note durations. `beats` counts quarter notes, so a 4/4 bar holds 4.
+    // Kept at module scope because bar-line grouping will need the same numbers.
+    const DURATIONS = {
+      w: { beats: 4,   hollow: true,  stem: false, flags: 0, name: "nốt tròn" },
+      h: { beats: 2,   hollow: true,  stem: true,  flags: 0, name: "nốt trắng" },
+      q: { beats: 1,   hollow: false, stem: true,  flags: 0, name: "nốt đen" },
+      e: { beats: 0.5, hollow: false, stem: true,  flags: 1, name: "nốt móc đơn" }
+    };
+    const DEFAULT_DUR = 'q';
+
     // Generalized SVG Pure Renderer Function
     function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160) {
       const container = document.getElementById(containerId);
@@ -605,17 +615,47 @@
           svg += `<text x="${noteX - 16}" y="${noteY + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
         }
 
-        // Draw Oval Notehead
-        svg += `<g transform="translate(${noteX}, ${noteY}) rotate(-20)">
-                  <ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#0f172a" />
-                </g>`;
+        // Duration drives the notehead shape, the stem and any flags.
+        const durKey = item.dur || DEFAULT_DUR;
+        const dur = DURATIONS[durKey];
+        if (!dur) {
+          console.error(`renderScoreSVG: unknown duration "${durKey}" on "${item.key}" - drawing a quarter note.`);
+        }
+        const shape = dur || DURATIONS[DEFAULT_DUR];
 
-        // Draw Stem (Down if step > 4, Up if step <= 4)
-        const stemUp = step <= 4;
-        const stemX = stemUp ? noteX + 5.5 : noteX - 5.5;
-        const stemY2 = stemUp ? noteY - 26 : noteY + 26;
-        seen(noteY); seen(stemY2);
-        svg += `<line x1="${stemX}" y1="${noteY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
+        // Draw Notehead: hollow for whole/half, filled for quarter/eighth.
+        // The whole note is wider and sits upright; the rest lean like handwriting.
+        seen(noteY);
+        if (shape.hollow && !shape.stem) {
+          svg += `<ellipse cx="${noteX}" cy="${noteY}" rx="7" ry="4.8" fill="none" stroke="#0f172a" stroke-width="1.8"/>`;
+        } else {
+          const fill = shape.hollow
+            ? `fill="none" stroke="#0f172a" stroke-width="1.6"`
+            : `fill="#0f172a"`;
+          svg += `<g transform="translate(${noteX}, ${noteY}) rotate(-20)">
+                    <ellipse cx="0" cy="0" rx="6" ry="4.5" ${fill} />
+                  </g>`;
+        }
+
+        // Draw Stem (down if the note sits high on the staff, up if low)
+        if (shape.stem) {
+          const stemUp = step <= 4;
+          const dir = stemUp ? -1 : 1;              // -1 draws upward on screen
+          const stemX = noteX + (stemUp ? 5.5 : -5.5);
+          const stemY2 = noteY + dir * 26;
+          seen(stemY2);
+          svg += `<line x1="${stemX}" y1="${noteY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
+
+          // Draw flags. A flag hangs from the stem tip and sweeps back toward
+          // the notehead - so it runs opposite the stem, never past the tip.
+          const flagDir = -dir;
+          for (let f = 0; f < shape.flags; f++) {
+            const tipY = stemY2 + flagDir * f * 7;
+            svg += `<path d="M ${stemX} ${tipY} `
+                 + `c 7 ${flagDir * 3}, 10 ${flagDir * 9}, 7 ${flagDir * 16} `
+                 + `c 1 ${flagDir * -7}, -3 ${flagDir * -11}, -7 ${flagDir * -13} z" fill="#0f172a"/>`;
+          }
+        }
 
         // Draw Annotation Label if provided
         if (item.label) {

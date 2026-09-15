@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -70,6 +70,48 @@ for (const clef of CLEFS) {
     missing.length === 0,
     missing.length ? 'missing: ' + missing.map(m => m.noteName).join(' ') : ''
   );
+}
+
+/* ---- vertical extent of everything an SVG actually draws ---------------
+ * Scraping y1?="..." was not enough: it misses y2 (stem tips) entirely and
+ * <path> flags carry no y attribute at all, so clipped stems and flags went
+ * unnoticed. This walks every y-bearing attribute AND the path data.
+ */
+
+function verticalExtent(svg) {
+  const ys = [];
+  for (const m of svg.matchAll(/\b(?:y|y1|y2|cy)="([-\d.]+)"/g)) ys.push(parseFloat(m[1]));
+
+  // path data: "M x y" then relative cubics "c dx1 dy1, dx2 dy2, dx dy".
+  // Control points bound the curve, so tracking them is a safe over-estimate.
+  for (const path of svg.matchAll(/<path d="([^"]+)"/g)) {
+    const nums = path[1].match(/-?[\d.]+/g);
+    if (!nums || nums.length < 2) continue;
+    let y = parseFloat(nums[1]);
+    ys.push(y);
+    for (let i = 2; i + 5 < nums.length; i += 6) {
+      const dy1 = parseFloat(nums[i + 1]);
+      const dy2 = parseFloat(nums[i + 3]);
+      const dy = parseFloat(nums[i + 5]);
+      ys.push(y + dy1, y + dy2, y + dy);
+      y += dy;
+    }
+  }
+  return ys.length ? { top: Math.min(...ys), bottom: Math.max(...ys) } : null;
+}
+
+function viewBoxOf(svg) {
+  const m = svg.match(/viewBox="0 ([-\d.]+) \d+ ([-\d.]+)"/);
+  return m ? { top: parseFloat(m[1]), bottom: parseFloat(m[1]) + parseFloat(m[2]) } : null;
+}
+
+function clipReport(svg) {
+  const drawn = verticalExtent(svg), box = viewBoxOf(svg);
+  if (!drawn || !box) return null;
+  if (drawn.top < box.top - 0.01 || drawn.bottom > box.bottom + 0.01) {
+    return `drawn [${drawn.top.toFixed(1)}, ${drawn.bottom.toFixed(1)}] vs viewBox [${box.top.toFixed(1)}, ${box.bottom.toFixed(1)}]`;
+  }
+  return null;
 }
 
 /* ---- an independent oracle ---------------------------------------------
@@ -131,17 +173,8 @@ for (const clef of CLEFS) {
       wrongLedgers.push(`${note.noteName} (step ${step}): drew ${ledgersDrawn} ledger line(s), theory says ${wantLedgers}`);
     }
 
-    const vb = svg.match(/viewBox="0 ([-\d.]+) \d+ ([-\d.]+)"/);
-    if (vb) {
-      const top = parseFloat(vb[1]);
-      const bottom = top + parseFloat(vb[2]);
-      const ys = [...svg.matchAll(/y1?="([-\d.]+)"/g)]
-        .map(m => parseFloat(m[1]))
-        .concat(parseFloat(head[2]));
-      if (Math.min(...ys) < top || Math.max(...ys) > bottom) {
-        clipped.push(`${note.noteName}: content [${Math.min(...ys)}, ${Math.max(...ys)}] vs viewBox [${top}, ${bottom}]`);
-      }
-    }
+    const clip = clipReport(svg);
+    if (clip) clipped.push(`${note.noteName}: ${clip}`);
     drawn++;
   }
 
@@ -214,6 +247,140 @@ for (const clef of CLEFS) {
 const flats = keyboardKeys.filter(k => /eb\/|bb\//.test(k.key));
 check('keyboard uses sharp spelling throughout', flats.length === 0,
       'flat-spelled keys: ' + flats.map(k => k.key).join(' '));
+
+/* ---- 8. note durations draw the right shape ---------------------------
+ * Counted off the emitted SVG. Staff lines are #64748b and ledger lines
+ * #334155, so anything stroked #0f172a is a stem, and the only filled
+ * <path> is a flag - the bass clef path is stroked, not filled.
+ */
+
+const countFilledHeads = (svg) => (svg.match(/<ellipse[^>]*fill="#0f172a"/g) || []).length;
+const countHollowHeads = (svg) => (svg.match(/<ellipse[^>]*fill="none"/g) || []).length;
+const countStems = (svg) => (svg.match(/stroke="#0f172a" stroke-width="1\.5"/g) || []).length;
+const countFlags = (svg) => (svg.match(/<path d="M [^"]*" fill="#0f172a"/g) || []).length;
+
+const SHAPES = [
+  { dur: 'w', beats: 4,   heads: 'hollow', stems: 0, flags: 0, label: 'nốt tròn' },
+  { dur: 'h', beats: 2,   heads: 'hollow', stems: 1, flags: 0, label: 'nốt trắng' },
+  { dur: 'q', beats: 1,   heads: 'filled', stems: 1, flags: 0, label: 'nốt đen' },
+  { dur: 'e', beats: 0.5, heads: 'filled', stems: 1, flags: 1, label: 'nốt móc đơn' },
+];
+
+for (const spec of SHAPES) {
+  const wrong = [];
+  // g/4 sits low (stem up), e/5 sits high (stem down): exercise both directions
+  for (const key of ['g/4', 'e/5']) {
+    renderScoreSVG('probe', [{ key, dur: spec.dur }], 'treble', 340, 160);
+    const svg = rendered.probe;
+
+    const filled = countFilledHeads(svg), hollow = countHollowHeads(svg);
+    const wantFilled = spec.heads === 'filled' ? 1 : 0;
+    const wantHollow = spec.heads === 'hollow' ? 1 : 0;
+    if (filled !== wantFilled || hollow !== wantHollow) {
+      wrong.push(`${key}: ${filled} filled / ${hollow} hollow head(s), want ${wantFilled}/${wantHollow}`);
+    }
+    if (countStems(svg) !== spec.stems) wrong.push(`${key}: ${countStems(svg)} stem(s), want ${spec.stems}`);
+    if (countFlags(svg) !== spec.flags) wrong.push(`${key}: ${countFlags(svg)} flag(s), want ${spec.flags}`);
+  }
+  check(`duration '${spec.dur}' draws a ${spec.label}`, wrong.length === 0, wrong.join('\n        '));
+
+  if (DURATIONS) {
+    check(`duration '${spec.dur}' is worth ${spec.beats} beat(s)`,
+          DURATIONS[spec.dur] && DURATIONS[spec.dur].beats === spec.beats,
+          `table says ${DURATIONS[spec.dur] && DURATIONS[spec.dur].beats}`);
+  }
+}
+
+/* ---- 9. omitting dur must not change any existing call ----------------- */
+
+const changed = [];
+for (const clef of CLEFS) {
+  for (const k of keyboardKeys) {
+    if (!notesData[clef].some(n => n.key === k.key)) continue;
+    renderScoreSVG('probe', [{ key: k.key }], clef, 340, 160);
+    const bare = rendered.probe;
+    renderScoreSVG('probe', [{ key: k.key, dur: 'q' }], clef, 340, 160);
+    if (bare !== rendered.probe) changed.push(`${clef} ${k.noteName}`);
+  }
+}
+check('omitting dur renders exactly like a quarter note', changed.length === 0,
+      'differs for: ' + changed.slice(0, 5).join(', '));
+
+/* ---- 10. stems point away from the middle of the staff ----------------- */
+
+const stemDir = (svg) => {
+  const m = svg.match(/<line x1="[-\d.]+" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#0f172a"/);
+  return m ? (parseFloat(m[2]) < parseFloat(m[1]) ? 'up' : 'down') : null;
+};
+const badDir = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    renderScoreSVG('probe', [{ key: note.key, dur: 'q' }], clef, 340, 160);
+    const want = note.step <= 4 ? 'up' : 'down';
+    const got = stemDir(rendered.probe);
+    if (got !== want) badDir.push(`${clef} ${note.noteName} (step ${note.step}): stem ${got}, want ${want}`);
+  }
+}
+check('stems point up below the middle line and down above it', badDir.length === 0,
+      badDir.slice(0, 5).join('\n        '));
+
+/* ---- 11. stems and flags stay inside the fitted viewBox ---------------- */
+
+const escaped = [];
+for (const clef of CLEFS) {
+  for (const note of notesData[clef]) {
+    for (const d of ['w', 'h', 'q', 'e']) {
+      renderScoreSVG('probe', [{ key: note.key, dur: d }], clef, 340, 160);
+      const clip = clipReport(rendered.probe);
+      if (clip) escaped.push(`${clef} ${note.noteName} dur=${d}: ${clip}`);
+    }
+  }
+}
+check('every duration stays inside the fitted viewBox', escaped.length === 0,
+      escaped.slice(0, 5).join(', '));
+
+/* ---- 11b. a flag sweeps back toward the notehead ----------------------
+ * A flag hangs off the stem tip and curves back alongside the stem. Drawing
+ * it in the stem's own direction pushes it out past the tip, which both
+ * looks wrong and is what made the stem/flag clipping checks load-bearing.
+ */
+
+const strayFlags = [];
+for (const key of ['g/4', 'e/5']) {           // stem up, then stem down
+  renderScoreSVG('probe', [{ key, dur: 'e' }], 'treble', 340, 160);
+  const svg = rendered.probe;
+
+  const stem = svg.match(/<line x1="([-\d.]+)" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#0f172a"/);
+  const flag = svg.match(/<path d="([^"]+)" fill="#0f172a"/);
+  if (!stem || !flag) { strayFlags.push(`${key}: stem or flag missing`); continue; }
+
+  const headY = parseFloat(stem[2]), tipY = parseFloat(stem[3]);
+  const nums = flag[1].match(/-?[\d.]+/g).map(Number);
+  let y = nums[1];
+  const flagYs = [y];
+  for (let i = 2; i + 5 < nums.length; i += 6) {
+    flagYs.push(y + nums[i + 1], y + nums[i + 3], y + nums[i + 5]);
+    y += nums[i + 5];
+  }
+  const lo = Math.min(...flagYs), hi = Math.max(...flagYs);
+  const spanLo = Math.min(headY, tipY) - 0.01, spanHi = Math.max(headY, tipY) + 0.01;
+  if (lo < spanLo || hi > spanHi) {
+    strayFlags.push(`${key}: flag spans [${lo.toFixed(1)}, ${hi.toFixed(1)}], stem runs [${spanLo.toFixed(1)}, ${spanHi.toFixed(1)}]`);
+  }
+}
+check('eighth-note flags stay within the stem, curving back to the head',
+      strayFlags.length === 0, strayFlags.join('\n        '));
+
+/* ---- 12. an unknown duration must complain, not guess quietly ---------- */
+
+let durLogged = 0;
+const prevError = console.error;
+console.error = () => durLogged++;
+renderScoreSVG('probe', [{ key: 'g/4', dur: 'zzz' }], 'treble', 340, 160);
+console.error = prevError;
+check('unknown duration logs an error', durLogged === 1, `console.error called ${durLogged}x`);
+check('unknown duration falls back to a quarter note',
+      countFilledHeads(rendered.probe) === 1 && countStems(rendered.probe) === 1 && countFlags(rendered.probe) === 0);
 
 /* ---- summary ----------------------------------------------------------- */
 

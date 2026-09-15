@@ -51,11 +51,12 @@ Chỉ cần Node, không cài gì thêm. **Bắt buộc chạy sau mỗi thay đ
 
 Mọi thứ về tiết tấu đều chặn ở đây. Làm trước.
 
-### T1 · Vẽ được hình nốt theo trường độ
-Renderer thêm tham số `dur`: `w` tròn, `h` trắng, `q` đen, `e` móc đơn.
-- Nốt tròn: đầu rỗng, không đuôi. Nốt trắng: đầu rỗng, có đuôi. Nốt đen: đầu đặc. Móc đơn: đầu đặc + dấu móc
-- Mặc định `q` để 98 lời gọi hiện tại không đổi hành vi
-- **Xong khi:** render đủ 4 hình nốt ở mọi bậc, đuôi quay đúng chiều, verify headless qua
+### T1 · Vẽ được hình nốt theo trường độ — ✅ XONG
+Bảng `DURATIONS` ở cấp module: `w` tròn (4 phách), `h` trắng (2), `q` đen (1), `e` móc đơn (½). Mỗi mục khai báo `beats`, `hollow`, `stem`, `flags` — T3 sẽ dùng lại `beats` để chia ô nhịp.
+
+Tham số `item.dur`, mặc định `q` nên 98 lời gọi cũ không đổi một pixel (có test khẳng định điều này). Trường độ lạ thì log lỗi rồi vẽ nốt đen, không im lặng.
+
+Thêm 15 phép kiểm tra vào `tools/verify.js`, kiểm chứng bằng 12 phép phá có chủ đích.
 
 ### T2 · Dấu lặng
 Lặng tròn, trắng, đen, móc đơn — vẽ đúng vị trí quy ước trên khuông.
