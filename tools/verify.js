@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -2700,6 +2700,134 @@ const badInterval = showInterval('zz/9');
 console.error = realIntervalErr;
 check('showing an interval to a key that does not exist is refused',
       badInterval === false && intervalLogged === 1);
+
+/* ---- 26. ear training ----------------------------------------------------
+ * The questions are random, so the checks assert what must hold of every
+ * question rather than of one particular draw - and draw enough of them that
+ * a rare bad case cannot hide.
+ */
+
+const EAR_DRAWS = 200;
+
+for (const mode of ['note', 'interval']) {
+  check(`ear training offers "${mode}"`, setEarMode(mode) === true && earTraining.mode === mode);
+
+  const faults = [];
+  const seenAnswers = new Set(), answerSlots = new Set();
+  audio.ctx.currentTime = 7000;
+
+  for (let i = 0; i < EAR_DRAWS; i++) {
+    const drawn = scenario(() => newEarQuestion());
+    const q = drawn.result;
+    if (drawn.errors) faults.push('an error was logged while drawing a question');
+    if (!q) { faults.push('no question was drawn'); break; }
+
+    if (q.options.length !== 4) faults.push(`${q.answer}: ${q.options.length} options`);
+    if (new Set(q.options).size !== q.options.length) faults.push(`${q.answer}: duplicate options`);
+    if (!q.options.includes(q.answer)) faults.push(`${q.answer}: the answer is not among the options`);
+    if (!q.keys.length) faults.push(`${q.answer}: nothing to listen to`);
+    if (mode === 'note' && q.keys.length !== 1) faults.push('a note question played more than one note');
+    if (mode === 'interval' && q.keys.length !== 2) faults.push('an interval question did not play two notes');
+    if (!q.keys.every(k => notesData.treble.some(n => n.key === k))) faults.push(`${q.answer}: an unplayable key`);
+
+    const sounded = drawn.nodes.filter(n => n.kind === 'oscillator');
+    if (sounded.length !== q.keys.length) faults.push(`${q.answer}: ${sounded.length} note(s) sounded for ${q.keys.length} key(s)`);
+
+    seenAnswers.add(q.answer);
+    answerSlots.add(q.options.indexOf(q.answer));
+  }
+
+  check(`${mode}: every question is well formed over ${EAR_DRAWS} draws`, faults.length === 0,
+        [...new Set(faults)].slice(0, 3).join('; '));
+  check(`${mode}: the questions vary rather than repeating one`, seenAnswers.size >= 3,
+        `only ${seenAnswers.size} distinct question(s) in ${EAR_DRAWS} draws`);
+  check(`${mode}: the right answer moves around the options`, answerSlots.size === 4,
+        `the answer only ever appeared in slot(s) ${[...answerSlots].join(', ')}`);
+}
+
+/* 26b. a question is heard, not seen */
+
+setEarMode('note');
+audio.ctx.currentTime = 7500;
+const heard = scenario(() => newEarQuestion());
+const earQ = heard.result;
+check('the question sounds the pitch it is asking about',
+      heard.nodes.filter(n => n.kind === 'oscillator').length === 1);
+check('nothing is drawn on the staff to give the answer away',
+      !(rendered['ear-panel'] || '').includes('<svg')
+        && !(rendered['ear-panel'] || '').includes(earQ.keys[0]),
+      'the panel is showing the note it is asking the ear to name');
+
+/* 26c. the interval question really plays two different pitches, in turn */
+
+setEarMode('interval');
+audio.ctx.currentTime = 7600;
+const heardInterval = scenario(() => newEarQuestion());
+const intervalOscs = heardInterval.nodes.filter(n => n.kind === 'oscillator');
+check('an interval question plays two notes one after the other',
+      intervalOscs.length === 2 && intervalOscs[1].started[0] > intervalOscs[0].started[0],
+      intervalOscs.map(o => o.started[0]).join(', '));
+
+/* 26d. replaying plays the same question again */
+
+audio.ctx.currentTime = 7700;
+const before = earTraining.question;
+const replayed = scenario(() => playEarQuestion());
+check('the question can be heard again', replayed.result === true);
+check('replaying does not change the question', earTraining.question === before);
+check('replaying sounds the same notes',
+      replayed.nodes.filter(n => n.kind === 'oscillator').length === before.keys.length);
+
+/* 26e. scoring */
+
+setEarMode('note');
+earTraining.score = 0;
+earTraining.streak = 0;
+audio.ctx.currentTime = 7800;
+
+let earAsk = newEarQuestion();
+check('a right answer is reported as right',
+      answerEar(earAsk.options.indexOf(earAsk.answer)) === true);
+check('a right answer counts', earTraining.score === 1 && earTraining.streak === 1);
+check('a question can only be answered once', answerEar(0) === null,
+      'the same question was scored twice');
+
+earAsk = newEarQuestion();
+check('a right answer lengthens the streak',
+      answerEar(earAsk.options.indexOf(earAsk.answer)) === true && earTraining.streak === 2);
+
+earAsk = newEarQuestion();
+const wrongIndex = earAsk.options.findIndex(o => o !== earAsk.answer);
+check('a wrong answer is reported as wrong', answerEar(wrongIndex) === false);
+check('a wrong answer breaks the streak but keeps the score',
+      earTraining.streak === 0 && earTraining.score === 2,
+      `score ${earTraining.score}, streak ${earTraining.streak}`);
+
+/* 26f. what cannot be asked for */
+
+let earLogged = 0;
+let earErr = console.error;
+console.error = () => earLogged++;
+const badMode = setEarMode('màu sắc');
+console.error = earErr;
+check('a mode that does not exist is refused', badMode === false && earLogged === 1);
+check('a refused mode leaves the current one alone', earTraining.mode === 'note');
+
+newEarQuestion();
+earLogged = 0;
+earErr = console.error;
+console.error = () => earLogged++;
+const badOption = answerEar(99);
+console.error = earErr;
+check('choosing an option that is not there is refused', badOption === null && earLogged === 1);
+
+earTraining.question = null;
+earLogged = 0;
+earErr = console.error;
+console.error = () => earLogged++;
+const nothingToPlay = playEarQuestion();
+console.error = earErr;
+check('replaying with no question is refused', nothingToPlay === false && earLogged === 1);
 
 /* ---- summary ----------------------------------------------------------- */
 

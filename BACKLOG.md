@@ -195,8 +195,12 @@ Thêm 87 phép kiểm tra, kiểm chứng bằng 19 phép phá — bắt đượ
 
 ## Giai đoạn 4 — Mở rộng
 
-### T12 · Luyện tai
-Nghe nốt / quãng rồi chọn đáp án. Tận dụng lại engine game sẵn có.
+### T12 · Luyện tai — ✅ XONG
+Hai chế độ: **nghe nốt** rồi gọi tên, và **nghe quãng** rồi gọi tên quãng (dùng lại `intervalBetween` của T13). Bốn lựa chọn, có xáo trộn, một câu chỉ trả lời một lần, có điểm và chuỗi đúng.
+
+Câu hỏi **không vẽ gì lên khuông, không sáng phím nào** — cả điểm của bài là câu trả lời phải đến từ tai; hiện phím ra là lộ đáp án. Có phép kiểm tra riêng cho chuyện đó, và một phép phá cho panel in kèm tên phím ra để chắc rằng phép kiểm tra ấy có hiệu lực.
+
+Thêm 24 phép kiểm tra, kiểm chứng bằng 16 phép phá — bắt được cả 16. Vì câu hỏi sinh **ngẫu nhiên**, phép kiểm tra không chốt một lượt rút cụ thể mà khẳng định thứ phải đúng với *mọi* câu — và rút **200 lượt** mỗi chế độ để một trường hợp hiếm không lẩn được. Trong đó có phép "đáp án đúng phải xuất hiện ở cả bốn vị trí", đủ để bắt việc quên xáo trộn.
 
 ### T13 · Quãng — ✅ XONG
 Một quãng có hai phần và hai phần đó **đếm theo hai cách khác nhau** — đó chính là chỗ sinh ra lỗi:
@@ -243,7 +247,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 138KB / 2748 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 144KB / 2900 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -257,7 +261,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **520 phép kiểm tra**, kiểm chứng bằng **205 phép phá có chủ đích** trên 13 bộ.
+Tổng cộng: **540 phép kiểm tra**, kiểm chứng bằng **221 phép phá có chủ đích** trên 14 bộ.
 
 ## Việc chưa kiểm chứng
 

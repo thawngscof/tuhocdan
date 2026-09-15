@@ -378,6 +378,30 @@
         </div>
       </div>
 
+      <!-- Ear training -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Luyện Tai</h2>
+            <p class="text-sm text-slate-500">Không nhìn phím, không nhìn khuông — chỉ nghe rồi chọn.</p>
+          </div>
+          <span id="ear-score" class="text-sm font-bold text-blue-700">Đúng 0 · Chuỗi 0</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <button onclick="setEarMode('note')" class="chord-btn">Nghe nốt</button>
+          <button onclick="setEarMode('interval')" class="chord-btn">Nghe quãng</button>
+          <button onclick="newEarQuestion()"
+                  class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-sm hover:bg-blue-700 transition-all">Câu mới</button>
+          <button onclick="playEarQuestion()"
+                  class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-all">Nghe lại</button>
+        </div>
+
+        <div id="ear-panel" class="border border-slate-200 rounded-xl p-4 bg-slate-50/60 min-h-[110px]">
+          <!-- Question generated in JS -->
+        </div>
+      </div>
+
       <!-- Intervals -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="mb-4">
@@ -2215,6 +2239,133 @@
       return true;
     }
 
+    /* ---- Ear training -----------------------------------------------------
+     * Same shape as the note-reading game, but the question arrives through
+     * the ears: hear a note and name it, or hear two notes and name the
+     * distance between them.
+     */
+    const EAR_MODES = {
+      note:     { label: 'Nghe nốt',  prompt: 'Nốt vừa nghe là nốt gì?' },
+      interval: { label: 'Nghe quãng', prompt: 'Hai nốt vừa nghe cách nhau quãng mấy?' },
+    };
+    const EAR_POOL = ['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5'];
+    const EAR_OPTION_COUNT = 4;
+
+    const earTraining = { mode: 'note', question: null, score: 0, streak: 0, answered: false };
+
+    const pickRandom = (list) => list[Math.floor(Math.random() * list.length)];
+
+    // Fill up to `count` distinct options around the right one, then shuffle so
+    // the answer is not always in the same place.
+    function buildOptions(answer, pool, count) {
+      const options = [answer];
+      const rest = pool.filter(o => o !== answer);
+      while (options.length < count && rest.length) {
+        options.push(rest.splice(Math.floor(Math.random() * rest.length), 1)[0]);
+      }
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+      return options;
+    }
+
+    function setEarMode(mode) {
+      if (!EAR_MODES[mode]) {
+        console.error(`setEarMode: there is no ear training mode called "${mode}".`);
+        return false;
+      }
+      earTraining.mode = mode;
+      earTraining.question = null;
+      earTraining.answered = false;
+      renderEarTraining();
+      return true;
+    }
+
+    function newEarQuestion() {
+      if (earTraining.mode === 'note') {
+        const key = pickRandom(EAR_POOL);
+        const note = notesData.treble.find(n => n.key === key);
+        earTraining.question = {
+          kind: 'note', keys: [key], answer: note.noteName,
+          options: buildOptions(note.noteName, EAR_POOL.map(k => notesData.treble.find(n => n.key === k).noteName), EAR_OPTION_COUNT),
+        };
+      } else {
+        const step = pickRandom(INTERVAL_STEPS);
+        const interval = intervalBetween(INTERVAL_ROOT, step.key);
+        earTraining.question = {
+          kind: 'interval', keys: [INTERVAL_ROOT, step.key], answer: interval.name,
+          options: buildOptions(interval.name,
+            INTERVAL_STEPS.map(s => intervalBetween(INTERVAL_ROOT, s.key).name), EAR_OPTION_COUNT),
+        };
+      }
+      earTraining.answered = false;
+      playEarQuestion();
+      renderEarTraining();
+      return earTraining.question;
+    }
+
+    // Deliberately no highlighting and nothing drawn: the whole point is that
+    // the answer has to come from the ear, so showing the keys would give it away.
+    function playEarQuestion() {
+      const question = earTraining.question;
+      if (!question) {
+        console.error('playEarQuestion: there is no question to play.');
+        return false;
+      }
+      const ctx = ensureAudio();
+      question.keys.forEach((key, i) => {
+        const note = notesData.treble.find(n => n.key === key);
+        if (!note) return;
+        playTone(note.freq, { at: ctx.currentTime + 0.05 + i * 0.75, hold: 0.7, voice: `ear-${i}` });
+      });
+      return true;
+    }
+
+    function answerEar(optionIndex) {
+      const question = earTraining.question;
+      if (!question || !question.options[optionIndex]) {
+        console.error(`answerEar: there is no option ${optionIndex} to choose.`);
+        return null;
+      }
+      if (earTraining.answered) return null;      // one go per question
+
+      const correct = question.options[optionIndex] === question.answer;
+      earTraining.answered = true;
+      if (correct) {
+        earTraining.score++;
+        earTraining.streak++;
+      } else {
+        earTraining.streak = 0;
+      }
+      renderEarTraining();
+      return correct;
+    }
+
+    function renderEarTraining() {
+      const panel = document.getElementById('ear-panel');
+      if (!panel) return;
+      const question = earTraining.question;
+
+      if (!question) {
+        panel.innerHTML = `<p class="text-sm text-slate-500">Bấm "Câu mới" để nghe câu hỏi đầu tiên.</p>`;
+      } else {
+        panel.innerHTML = `
+          <p class="text-sm font-semibold text-slate-800 mb-3">${EAR_MODES[earTraining.mode].prompt}</p>
+          <div class="grid grid-cols-2 gap-2">
+            ${question.options.map((opt, i) => {
+              const state = !earTraining.answered ? 'border-slate-300 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
+                : opt === question.answer ? 'border-green-500 bg-green-50 text-green-800'
+                : 'border-slate-200 text-slate-400';
+              return `<button onclick="answerEar(${i})" class="px-3 py-2 rounded-lg border-2 text-sm font-bold transition-all ${state}">${opt}</button>`;
+            }).join('')}
+          </div>`;
+      }
+
+      const score = document.getElementById('ear-score');
+      if (score) score.innerText = `Đúng ${earTraining.score} · Chuỗi ${earTraining.streak}`;
+    }
+
     /* ---- Songs to play ----------------------------------------------------
      * Public domain only, as the backlog requires, and only melodies whose
      * notes I could set down with confidence - a song encoded from a hazy
@@ -2734,6 +2885,7 @@
       buildPianoKeyboard();
       buildBeatLights();
       buildIntervalButtons();
+      renderEarTraining();
       lessonProgress = loadProgress();
       renderLessonList();
       renderLessonDetail();
