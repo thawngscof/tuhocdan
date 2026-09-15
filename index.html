@@ -343,6 +343,29 @@
         </div>
       </div>
 
+      <!-- C major scale -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Gam Đô Trưởng</h2>
+            <p class="text-sm text-slate-500">Đi lên rồi đi xuống một quãng tám, có số ngón. Số ngón cũng hiện lên phím đàn khi phát.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="scale-btn-right" onclick="setScaleHand('right')"
+                    class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-sm transition-all">Tay phải</button>
+            <button id="scale-btn-left" onclick="setScaleHand('left')"
+                    class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-all">Tay trái</button>
+            <button onclick="playScale()"
+                    class="px-5 py-2 rounded-lg bg-slate-800 text-white font-bold shadow-sm hover:bg-slate-900 transition-all">Phát gam</button>
+          </div>
+        </div>
+
+        <div id="scale-score" class="w-full overflow-x-auto bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center items-center shadow-inner min-h-[180px] mb-3">
+          <!-- SVG injected in JS -->
+        </div>
+        <p id="scale-turn" class="text-sm font-semibold text-slate-600"></p>
+      </div>
+
       <!-- Left-hand chords -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="mb-4">
@@ -1609,6 +1632,87 @@
       return true;
     }
 
+    /* ---- The C major scale ------------------------------------------------
+     * Only the ascending form is written down. Coming back down is the same
+     * notes and the same fingers in reverse, so deriving it keeps the two from
+     * ever disagreeing - and it is also why the thumb turn lands in the right
+     * place both ways without being stated twice.
+     */
+    const SCALES = {
+      right: {
+        label: 'Tay phải', clef: 'treble',
+        keys:    ['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5'],
+        fingers: [1, 2, 3, 1, 2, 3, 4, 5],
+        // Going up, the thumb passes under the hand at F to reach the rest of
+        // the octave; coming down, finger 3 crosses back over it at the same F.
+        turn: { index: 3, up: 'Luồn ngón cái xuống dưới bàn tay để bấm nốt Fa.',
+                down: 'Bắc ngón 3 qua ngón cái để đi tiếp xuống.' },
+      },
+      left: {
+        label: 'Tay trái', clef: 'bass',
+        keys:    ['c/3', 'd/3', 'e/3', 'f/3', 'g/3', 'a/3', 'b/3', 'c/4'],
+        fingers: [5, 4, 3, 2, 1, 3, 2, 1],
+        turn: { index: 5, up: 'Bắc ngón 3 qua ngón cái để bấm nốt La.',
+                down: 'Luồn ngón cái xuống dưới bàn tay khi đi xuống qua nốt La.' },
+      },
+    };
+
+    // Up the octave and back down. The top note is not struck twice, and the
+    // last note is held for two beats so the whole thing fills four bars of 4/4.
+    function scalePassage(hand) {
+      const scale = SCALES[hand];
+      if (!scale) {
+        console.error(`scalePassage: there is no "${hand}" scale.`);
+        return null;
+      }
+      const up = scale.keys.map((key, i) => ({ key, finger: scale.fingers[i], dur: 'q' }));
+      const down = up.slice(0, -1).reverse().map(item => ({ ...item }));
+      down[down.length - 1].dur = 'h';
+      return up.concat(down);
+    }
+
+    let scaleHand = 'right';
+
+    function setScaleHand(hand) {
+      if (!SCALES[hand]) {
+        console.error(`setScaleHand: there is no "${hand}" scale.`);
+        return false;
+      }
+      scaleHand = hand;
+      showScale();
+      return true;
+    }
+
+    function showScale() {
+      const scale = SCALES[scaleHand];
+      const passage = scalePassage(scaleHand);
+      renderScoreSVG('scale-score', passage, scale.clef, 760, 180, '4/4');
+
+      const note = document.getElementById('scale-turn');
+      if (note) note.innerText = `Đi lên: ${scale.turn.up}  ·  Đi xuống: ${scale.turn.down}`;
+
+      for (const hand of Object.keys(SCALES)) {
+        const btn = document.getElementById(`scale-btn-${hand}`);
+        if (btn) {
+          btn.className = hand === scaleHand
+            ? 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-sm transition-all'
+            : 'px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-all';
+        }
+      }
+    }
+
+    function playScale() {
+      const scale = SCALES[scaleHand];
+      const passage = scalePassage(scaleHand);
+      if (!passage) return false;
+      // Show the fingering on the keys as well, so the hand shape is visible
+      // rather than only readable off the staff.
+      const fingering = {};
+      scale.keys.forEach((key, i) => { fingering[key] = scale.fingers[i]; });
+      setKeyFingering(fingering);
+      return playSequence(passage, { clef: scale.clef });
+    }
+
     // A plain reading exercise, not a tune: two bars of 4/4 that between them
     // use every note shape and rest the renderer knows, so the passage doubles
     // as the first place any of T1-T4 is visible on the page.
@@ -1872,6 +1976,7 @@
       buildPianoKeyboard();
       buildBeatLights();
       renderDemoPhrase();
+      showScale();
       updatePracticeDisplay();
       setTimeout(() => scrollKeyboardTo('C4'), 200);
     };

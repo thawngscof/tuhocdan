@@ -26,7 +26,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Số chỉ nhịp, vạch nhịp, ô nhịp | ✅ T3 |
 | Tiết tấu, máy gõ nhịp | ✅ T5 + T6 |
 | Hợp âm tay trái | ✅ T8 |
-| Gam, ngón bấm | số ngón ✅ T4, gam chưa có |
+| Gam, ngón bấm | ✅ T4 + T9 |
 | Bài hát tập chơi | chưa có |
 | Lộ trình bài học có thứ tự | chưa có |
 
@@ -151,8 +151,14 @@ Phát kiểu chặn (cùng lúc) và kiểu rải (cách nhau một móc đơn t
 Thêm 43 phép kiểm tra, kiểm chứng bằng 23 phép phá — bắt được cả 23. Hợp âm đối chiếu bằng **quãng suy từ chính tên hợp âm** (đuôi `m` là thứ, đuôi `7` là bảy át, còn lại là trưởng), không so với danh sách nốt đang nuôi trang — so dữ liệu với chính nó thì nốt bậc ba sai vẫn qua. Hai phép lúc đầu lọt lưới, cả hai về đuôi nốt: phép kiểm tra hướng đuôi dùng hợp âm không phân biệt được hai quy tắc (đã đổi sang Dm), và phép kiểm tra độ dài đuôi chỉ đòi "vượt qua đầu kia" nên một đuôi cụt 6px vẫn lọt.
 - **Phụ thuộc:** T7
 
-### T9 · Gam Đô trưởng & ngón bấm
-Gam đi lên/xuống hai tay, số ngón, kỹ thuật luồn ngón cái.
+### T9 · Gam Đô trưởng & ngón bấm — ✅ XONG
+**Chỉ viết chiều đi lên.** Chiều đi xuống suy ra bằng cách đảo ngược — cùng nốt, cùng ngón — nên hai chiều không bao giờ lệch nhau, và cũng nhờ vậy điểm luồn ngón tự rơi đúng chỗ ở cả hai chiều mà không phải khai báo hai lần.
+
+Tay phải `1 2 3 1 2 3 4 5` (luồn ngón cái ở nốt Fa), tay trái `5 4 3 2 1 3 2 1` (bắc ngón 3 qua ngón cái ở nốt La). Hai tay là **ảnh gương của nhau** — có phép kiểm tra riêng cho điều đó.
+
+Đi lên 8 nốt rồi xuống 7 nốt (không gõ lại nốt đỉnh), nốt cuối ngân 2 phách để trọn 4 ô nhịp 4/4. Khi phát, số ngón hiện luôn lên phím đàn qua `setKeyFingering` của T4.
+
+Thêm 46 phép kiểm tra, kiểm chứng bằng 17 phép phá — bắt được cả 17. Nốt đối chiếu với **mẫu quãng của gam trưởng** (`0 2 4 5 7 9 11 12` nửa cung), còn ngón bấm đối chiếu với **thứ bàn tay làm được**: năm ngón, không ngón nào bấm hai nốt liền nhau, và **đúng một** chỗ đổi thế tay — chỗ đó bắt buộc phải dính tới ngón cái, tức luồn xuống hoặc bắc qua.
 - **Phụ thuộc:** T4, T6
 
 ### T10 · Bài hát tập chơi
@@ -202,7 +208,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 97KB / 1880 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 101KB / 1985 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -216,7 +222,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **269 phép kiểm tra**, kiểm chứng bằng **121 phép phá có chủ đích** trên 8 bộ.
+Tổng cộng: **315 phép kiểm tra**, kiểm chứng bằng **138 phép phá có chủ đích** trên 9 bộ.
 
 ## Việc chưa kiểm chứng
 

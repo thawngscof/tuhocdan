@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -1933,6 +1933,155 @@ console.error = () => badProgLogged++;
 const refusedProg = playProgression(9);
 console.error = chordErr;
 check('a progression that does not exist is refused', refusedProg === false && badProgLogged === 1);
+
+/* ---- 21. the C major scale ----------------------------------------------
+ * The notes are checked against the major scale's own interval pattern, and
+ * the fingering against what a hand can physically do: five fingers, no
+ * finger twice in a row, and exactly one place where the thumb turns.
+ */
+
+const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11, 12];   // tone tone semitone tone tone tone semitone
+
+for (const [hand, scale] of Object.entries(SCALES)) {
+  const pitches = scale.keys.map(absolutePitch);
+  const fromRoot = pitches.map(p => p - pitches[0]);
+  check(`${hand}: the notes spell a major scale`,
+        JSON.stringify(fromRoot) === JSON.stringify(MAJOR_STEPS),
+        `semitones from the root: ${fromRoot.join(', ')}, want ${MAJOR_STEPS.join(', ')}`);
+
+  check(`${hand}: the scale starts and ends on C, an octave apart`,
+        /^c\//.test(scale.keys[0]) && /^c\//.test(scale.keys[7])
+          && pitches[7] - pitches[0] === 12);
+
+  const letters = scale.keys.map(k => k[0]);
+  check(`${hand}: the scale steps through every letter in turn`,
+        new Set(letters.slice(0, 7)).size === 7,
+        `letters ${letters.join(' ')} - a scale uses each once`);
+
+  check(`${hand}: every note is on the keyboard and in this hand's clef`,
+        scale.keys.every(k => keyboardKeys.some(kk => kk.key === k))
+          && scale.keys.every(k => notesData[scale.clef].some(n => n.key === k)));
+
+  /* the fingering has to be playable by a hand */
+
+  const f = scale.fingers;
+  check(`${hand}: the fingering names one finger per note, 1 to 5`,
+        f.length === scale.keys.length && f.every(n => Number.isInteger(n) && n >= 1 && n <= 5),
+        f.join(', '));
+  check(`${hand}: no finger plays twice in a row`,
+        f.every((n, i) => i === 0 || n !== f[i - 1]), f.join(', '));
+
+  // Everywhere but the turn, the hand moves one finger to the next note. The
+  // one place it does not is where the thumb passes under, or a finger crosses
+  // back over the thumb - and it has to involve the thumb either way.
+  const jumps = f.map((n, i) => (i === 0 ? null : n - f[i - 1])).slice(1);
+  const irregular = jumps.map((d, i) => ({ at: i + 1, d })).filter(j => Math.abs(j.d) !== 1);
+  check(`${hand}: the hand changes position exactly once going up`,
+        irregular.length === 1,
+        `position changes at ${irregular.map(j => `note ${j.at}`).join(', ') || 'nowhere'}`);
+  check(`${hand}: the position change is a thumb turn`,
+        irregular.length === 1 && (f[irregular[0].at] === 1 || f[irregular[0].at - 1] === 1),
+        irregular.length === 1 ? `fingers ${f[irregular[0].at - 1]} then ${f[irregular[0].at]} - neither is the thumb` : '');
+  check(`${hand}: the turn is where the scale says it is`,
+        irregular.length === 1 && irregular[0].at === scale.turn.index,
+        irregular.length === 1 ? `the fingering turns at note ${irregular[0].at}, turn.index says ${scale.turn.index}` : '');
+
+  check(`${hand}: the turn is explained both going up and coming down`,
+        Boolean(scale.turn.up) && Boolean(scale.turn.down) && scale.turn.up !== scale.turn.down);
+}
+
+/* 21b. going up and coming down mirror each other */
+
+check('the two hands finger the scale as mirror images of one another',
+      JSON.stringify(SCALES.right.fingers) === JSON.stringify(SCALES.left.fingers.slice().reverse()),
+      `right ${SCALES.right.fingers.join('')}, left reversed ${SCALES.left.fingers.slice().reverse().join('')}`);
+
+/* 21c. the passage runs up and back down */
+
+for (const hand of Object.keys(SCALES)) {
+  const scale = SCALES[hand];
+  const passage = scalePassage(hand);
+
+  check(`${hand}: the passage runs up and back down without striking the top note twice`,
+        passage.length === 15,
+        `${passage.length} notes, want 8 up plus 7 down`);
+  check(`${hand}: it goes up to the top and back to the bottom`,
+        passage[0].key === scale.keys[0] && passage[7].key === scale.keys[7]
+          && passage[14].key === scale.keys[0]);
+
+  const rising = passage.slice(0, 8).every((it, i) => i === 0 || absolutePitch(it.key) > absolutePitch(passage[i - 1].key));
+  const falling = passage.slice(8).every((it, i) => i === 0 ? absolutePitch(it.key) < absolutePitch(passage[7].key)
+                                                            : absolutePitch(it.key) < absolutePitch(passage[i + 7].key));
+  check(`${hand}: it rises to the top then falls all the way back`, rising && falling);
+
+  check(`${hand}: coming down uses the same finger on each note as going up`,
+        passage.slice(8).every(it => {
+          const i = scale.keys.indexOf(it.key);
+          return it.finger === scale.fingers[i];
+        }),
+        'the descending fingering has drifted from the ascending one');
+
+  const beats = passage.reduce((n, it) => n + DURATIONS[it.dur || 'q'].beats, 0);
+  check(`${hand}: the passage fills whole bars of 4/4 (${beats} beats)`, beats % 4 === 0, `${beats} beats`);
+  check(`${hand}: the last note is held`, passage[14].dur === 'h');
+}
+
+let scaleLogged = 0;
+let scaleErr = console.error;
+console.error = () => scaleLogged++;
+const noScale = scalePassage('third');
+console.error = scaleErr;
+check('a hand with no scale is refused', noScale === null && scaleLogged === 1);
+
+/* 21d. the scale draws, and every note carries its finger */
+
+for (const hand of Object.keys(SCALES)) {
+  const scale = SCALES[hand];
+  renderScoreSVG('probe', scalePassage(hand), scale.clef, 760, 180, '4/4');
+  const fingers = [...rendered.probe.matchAll(/<text[^>]*fill="#7c3aed"[^>]*>(\d)<\/text>/g)].map(m => Number(m[1]));
+  check(`${hand}: every note of the drawn scale carries its finger`,
+        fingers.length === 15, `${fingers.length} finger number(s) for 15 notes`);
+  check(`${hand}: the drawn fingering matches the scale`,
+        JSON.stringify(fingers.slice(0, 8)) === JSON.stringify(scale.fingers),
+        `drew ${fingers.slice(0, 8).join('')}, want ${scale.fingers.join('')}`);
+  check(`${hand}: the scale divides into whole bars with no complaint`,
+        (() => {
+          const said = [];
+          const realWarn = console.warn;
+          console.warn = (m) => said.push(m);
+          renderScoreSVG('probe', scalePassage(hand), scale.clef, 760, 180, '4/4');
+          console.warn = realWarn;
+          return said.length === 0;
+        })());
+}
+
+/* 21e. choosing a hand, and playing */
+
+check('the right hand is offered', setScaleHand('right') === true);
+check('the left hand is offered', setScaleHand('left') === true);
+let handLogged = 0;
+scaleErr = console.error;
+console.error = () => handLogged++;
+const badHand = setScaleHand('foot');
+console.error = scaleErr;
+check('a hand that does not exist is refused', badHand === false && handLogged === 1);
+
+setScaleHand('right');
+audio.ctx.currentTime = 3000;
+const scalePlay = scenario(() => playScale());
+check('playing the scale raises no error', scalePlay.errors === 0 && scalePlay.result === true);
+check('playing the scale sounds all fifteen notes',
+      scalePlay.nodes.filter(n => n.kind === 'oscillator').length === 15,
+      `${scalePlay.nodes.filter(n => n.kind === 'oscillator').length} note(s)`);
+check('playing the scale puts the fingering on the keys',
+      (() => {
+        const divs = keyDivs(rendered[KEYBOARD]);
+        return SCALES.right.keys.every((key, i) =>
+          badgeIn(divs[key.replace('/', '_')]) === String(SCALES.right.fingers[i]));
+      })(),
+      'the keys are not showing the scale fingering');
+stopSequence();
+clearKeyFingering();
 
 /* ---- summary ----------------------------------------------------------- */
 
