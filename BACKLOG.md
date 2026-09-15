@@ -28,7 +28,7 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Hợp âm tay trái | ✅ T8 |
 | Gam, ngón bấm | ✅ T4 + T9 |
 | Bài hát tập chơi | ✅ T10 (4 bài, thiếu dân ca Việt) |
-| Lộ trình bài học có thứ tự | chưa có |
+| Lộ trình bài học có thứ tự | ✅ T11 |
 
 ## Chạy kiểm thử
 
@@ -183,19 +183,14 @@ Backlog đặt ra "dân ca / thiếu nhi quen thuộc", mà bốn bài trên **�
 Cũng đã cân nhắc và **loại**: "Cháu lên ba" (Phong Nhã, mất 2020 — còn bản quyền), "Con cò bé bé" (không rõ tác giả).
 - **Phụ thuộc:** T3, T6
 
-### T11 · Lộ trình bài học
-Tab "Bài Học" gồm ~10 bài đánh số, mỗi bài có lý thuyết → thực hành → kiểm tra.
-Lưu tiến độ vào `localStorage`.
-- Bài 1 nhận biết bàn phím, tìm Đô qua nhóm 2/3 phím đen
-- Bài 2 khuông nhạc và khóa Sol
-- Bài 3 đọc nốt khóa Sol
-- Bài 4 khóa Fa và tay trái
-- Bài 5 trường độ
-- Bài 6 nhịp 4/4 và vạch nhịp
-- Bài 7 dấu lặng
-- Bài 8 gam Đô trưởng và ngón bấm
-- Bài 9 hợp âm tay trái
-- Bài 10 ghép hai tay, bài hát đầu tiên
+### T11 · Lộ trình bài học — ✅ XONG
+Tab "📚 Bài Học" với đúng 10 bài theo thứ tự đã định. Mỗi bài: mục tiêu, ba đoạn lý thuyết, một nút **thực hành dẫn thẳng tới phần tương ứng của trang** (chứ không dựng lại cái đã có), rồi ba câu kiểm tra. Đúng cả ba câu thì bài được đánh dấu xong.
+
+Bài thực hành gọi: `scrollKeyboardTo`, `switchTab`, `setClef`, `startMetronome`, `playScale`, `playProgression`, `setSong`. **Có phép kiểm tra đối chiếu từng lời gọi đó với hàm thật trong trang** — cùng loại bẫy như nút gắn sai tên hàm, và cũng vô hình cho tới khi có người bấm.
+
+Tiến độ lưu `localStorage` dưới khoá `tuhocdan.progress.v1`. **Dữ liệu đọc từ đó bị coi là dữ liệu lạ**, không phải đồ nhà: bản cũ của trang, tab khác, hay người mở dev tools đều có thể đã ghi vào đấy. Nên nó lọc bỏ id bài không tồn tại, khử trùng lặp, và bắt mọi ngoại lệ — riêng chuyện `localStorage` ném lỗi trong chế độ riêng tư là có thật.
+
+Thêm 87 phép kiểm tra, kiểm chứng bằng 19 phép phá — bắt được cả 19. **Ba phép lúc đầu không bị bắt đúng nghĩa:** phép "đánh dấu xong hai lần" lọt vì tôi đọc tiến độ qua chính hàm tải vốn tự khử trùng lặp, nên bản ghi lặp bị giấu (nay kiểm thẳng chuỗi đã lưu); hai phép còn lại chỉ làm script ném lỗi ra ngoài, tức bộ test chết chứ không phải phát hiện (nay bọc lại để báo thành phép kiểm tra có tên).
 - **Phụ thuộc:** T1–T10
 
 ## Giai đoạn 4 — Mở rộng
@@ -225,7 +220,7 @@ Gán phím máy tính vào phím đàn, thêm nhãn ARIA cho phím.
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 110KB / 2182 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 130KB / 2576 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -239,7 +234,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **365 phép kiểm tra**, kiểm chứng bằng **153 phép phá có chủ đích** trên 10 bộ.
+Tổng cộng: **452 phép kiểm tra**, kiểm chứng bằng **172 phép phá có chủ đích** trên 11 bộ.
 
 ## Việc chưa kiểm chứng
 

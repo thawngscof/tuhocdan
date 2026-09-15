@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -2200,6 +2200,195 @@ console.error = songErr;
 check('a phrase that does not exist is refused', noPhrase === false && phraseLogged === 1);
 stopSequence();
 setSong('buom-vang');
+
+/* ---- 23. the lesson path -------------------------------------------------
+ * A lesson is a route through the app, so the practice step is checked
+ * against the functions the page actually declares - the same trap as a
+ * button wired to a misspelled handler, and just as invisible until clicked.
+ */
+
+check(`there are ten lessons (${LESSONS.length})`, LESSONS.length === 10);
+check('the lessons are numbered 1 to 10 with no gaps',
+      LESSONS.every((l, i) => l.id === i + 1),
+      LESSONS.map(l => l.id).join(', '));
+
+// The order the backlog set out, by the subject each lesson covers.
+const LESSON_SUBJECTS = [
+  /bàn phím/i, /khuông nhạc|khóa Sol/i, /đọc nốt/i, /khóa Fa/i, /trường độ/i,
+  /nhịp/i, /dấu lặng/i, /gam|ngón/i, /hợp âm/i, /hai tay|bài hát/i,
+];
+check('the lessons run in the order the backlog laid out',
+      LESSONS.every((l, i) => LESSON_SUBJECTS[i].test(l.title)),
+      LESSONS.map((l, i) => LESSON_SUBJECTS[i].test(l.title) ? '' : `${l.id}: "${l.title}"`).filter(Boolean).join(', '));
+
+const declaredPageFns = new Set([...script[1].matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
+
+for (const lesson of LESSONS) {
+  const where = `lesson ${lesson.id}`;
+  check(`${where}: has a title and a goal`, Boolean(lesson.title) && Boolean(lesson.goal));
+  check(`${where}: explains itself in at least two paragraphs`,
+        Array.isArray(lesson.theory) && lesson.theory.length >= 2
+          && lesson.theory.every(t => typeof t === 'string' && t.length > 40),
+        `${lesson.theory.length} paragraph(s)`);
+
+  check(`${where}: sends the learner somewhere in the app`,
+        Boolean(lesson.practice && lesson.practice.label && lesson.practice.action));
+  const called = [...lesson.practice.action.matchAll(/([A-Za-z_$][\w$]*)\s*\(/g)].map(m => m[1]);
+  check(`${where}: its practice step calls a function that exists (${called.join(', ')})`,
+        called.length > 0 && called.every(fn => declaredPageFns.has(fn)),
+        called.filter(fn => !declaredPageFns.has(fn)).join(', '));
+
+  check(`${where}: ends with a check of at least three questions`,
+        Array.isArray(lesson.quiz) && lesson.quiz.length >= 3);
+
+  const badQuiz = [];
+  lesson.quiz.forEach((item, qi) => {
+    if (!item.q || item.q.length < 10) badQuiz.push(`q${qi}: question too thin`);
+    if (!Array.isArray(item.options) || item.options.length < 3) badQuiz.push(`q${qi}: fewer than three options`);
+    if (!Number.isInteger(item.answer) || item.answer < 0 || item.answer >= item.options.length) {
+      badQuiz.push(`q${qi}: answer ${item.answer} is not one of the options`);
+    }
+    if (new Set(item.options).size !== item.options.length) badQuiz.push(`q${qi}: two options are the same`);
+  });
+  check(`${where}: every question has options and one real answer among them`,
+        badQuiz.length === 0, badQuiz.join('; '));
+}
+
+// The right answer must not always be the first option, or the check can be
+// passed without reading anything.
+const answerSpread = new Set(LESSONS.flatMap(l => l.quiz.map(q => q.answer)));
+check('the right answer is not always in the same place',
+      answerSpread.size >= 2,
+      `every answer is option ${[...answerSpread][0]}`);
+
+/* 23b. progress survives a round trip, and distrusts what it reads */
+
+const store = {};
+global.window.localStorage = {
+  getItem: (k) => (k in store ? store[k] : null),
+  setItem: (k, v) => { store[k] = String(v); },
+  removeItem: (k) => { delete store[k]; },
+};
+
+resetProgress();
+check('progress starts empty', loadProgress().done.length === 0);
+
+check('finishing a lesson is recorded', markLessonDone(3) === true && loadProgress().done.includes(3));
+markLessonDone(1);
+check('progress comes back in order', JSON.stringify(loadProgress().done) === '[1,3]',
+      JSON.stringify(loadProgress().done));
+markLessonDone(3);
+check('finishing the same lesson twice records it once',
+      JSON.stringify(loadProgress().done) === '[1,3]', JSON.stringify(loadProgress().done));
+// loadProgress removes duplicates as it reads, so checking through it would
+// hide a duplicate that really was written. Look at the stored text itself.
+check('finishing the same lesson twice stores it once',
+      JSON.parse(store[LESSON_STORAGE_KEY]).done.length === 2,
+      `stored ${store[LESSON_STORAGE_KEY]}`);
+
+let lessonLogged = 0;
+let lessonErr = console.error;
+console.error = () => lessonLogged++;
+const noLesson = markLessonDone(99);
+console.error = lessonErr;
+check('finishing a lesson that does not exist is refused',
+      noLesson === false && lessonLogged === 1 && !loadProgress().done.includes(99));
+
+check('resetting clears the record', resetProgress() === true && loadProgress().done.length === 0);
+
+// Anything at all can be sitting in localStorage - an older version of this
+// page, another tab, a person with the dev tools open.
+for (const [label, raw] of [
+  ['junk that is not JSON', 'not json at all'],
+  ['JSON that is not an object', '"hello"'],
+  ['an object with no done list', '{"foo":1}'],
+  ['a done list that is not a list', '{"done":"1,2,3"}'],
+  ['lesson numbers that do not exist', '{"done":[1,99,-5,"3"]}'],
+  ['the same lesson twice', '{"done":[2,2,2]}'],
+]) {
+  store[LESSON_STORAGE_KEY] = raw;
+  const errs = [];
+  lessonErr = console.error;
+  console.error = (m) => errs.push(m);
+  // "Survives" means exactly that: it must not throw. Letting the exception
+  // out would end the run rather than fail this check, which reads as a crash
+  // in whatever ran next instead of as the storage bug it is.
+  let got = null, threw = null;
+  try { got = loadProgress(); } catch (e) { threw = e; }
+  console.error = lessonErr;
+  check(`saved progress survives ${label}`,
+        !threw && got && Array.isArray(got.done)
+          && got.done.every(id => LESSONS.some(l => l.id === id))
+          && new Set(got.done).size === got.done.length,
+        threw ? `it threw instead: ${threw.message}` : `read back ${JSON.stringify(got.done)}`);
+}
+store[LESSON_STORAGE_KEY] = '{"done":[1,99,-5,"3"]}';
+check('a saved lesson number that does not exist is thrown away',
+      JSON.stringify(loadProgress().done) === '[1]', JSON.stringify(loadProgress().done));
+
+// Storage that throws - a private window, or site data blocked.
+const workingStorage = global.window.localStorage;
+global.window.localStorage = {
+  getItem() { throw new Error('denied'); },
+  setItem() { throw new Error('denied'); },
+};
+const thrownErrs = [];
+lessonErr = console.error;
+console.error = (m) => thrownErrs.push(m);
+let fallback = null, fallbackThrew = null, saved = null, saveThrew = null;
+try { fallback = loadProgress(); } catch (e) { fallbackThrew = e; }
+try { saved = saveProgress(); } catch (e) { saveThrew = e; }
+console.error = lessonErr;
+check('storage that refuses to be read starts the learner fresh rather than breaking',
+      !fallbackThrew && fallback && fallback.done.length === 0 && thrownErrs.length >= 1,
+      fallbackThrew ? `it threw instead: ${fallbackThrew.message}` : '');
+check('storage that refuses to be written reports it and carries on',
+      !saveThrew && saved === false,
+      saveThrew ? `it threw instead: ${saveThrew.message}` : '');
+global.window.localStorage = workingStorage;
+resetProgress();
+
+/* 23c. working through a lesson */
+
+check('a lesson can be opened', openLessonCard(5) === true);
+let openLogged = 0;
+lessonErr = console.error;
+console.error = () => openLogged++;
+const noCard = openLessonCard(42);
+console.error = lessonErr;
+check('a lesson that does not exist cannot be opened', noCard === false && openLogged === 1);
+
+openLessonCard(1);
+const lesson1 = LESSONS[0];
+check('a right answer is reported as right',
+      answerLessonQuiz(1, 0, lesson1.quiz[0].answer) === true);
+check('a wrong answer is reported as wrong',
+      answerLessonQuiz(1, 1, (lesson1.quiz[1].answer + 1) % lesson1.quiz[1].options.length) === false);
+
+let quizLogged = 0;
+lessonErr = console.error;
+console.error = () => quizLogged++;
+let noQuestion = null, quizThrew = null;
+try { noQuestion = answerLessonQuiz(1, 99, 0); } catch (e) { quizThrew = e; }
+console.error = lessonErr;
+check('answering a question that does not exist is refused',
+      !quizThrew && noQuestion === false && quizLogged === 1,
+      quizThrew ? `it threw instead: ${quizThrew.message}` : '');
+
+resetProgress();
+openLessonCard(2);
+const lesson2 = LESSONS[1];
+lesson2.quiz.forEach((item, qi) => answerLessonQuiz(2, qi, item.answer));
+check('getting every question right finishes the lesson',
+      loadProgress().done.includes(2), 'the lesson was not marked done');
+
+resetProgress();
+openLessonCard(2);
+lesson2.quiz.forEach((item, qi) =>
+  answerLessonQuiz(2, qi, qi === 0 ? (item.answer + 1) % item.options.length : item.answer));
+check('getting one question wrong does not finish the lesson',
+      !loadProgress().done.includes(2), 'the lesson was marked done on a wrong answer');
+resetProgress();
 
 /* ---- summary ----------------------------------------------------------- */
 

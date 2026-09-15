@@ -175,6 +175,9 @@
         <button id="tab-btn-quiz" onclick="switchTab('quiz')" class="px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all">
           🎯 Game Phản Xạ
         </button>
+        <button id="tab-btn-lessons" onclick="switchTab('lessons')" class="px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all">
+          📚 Bài Học
+        </button>
       </nav>
     </div>
   </header>
@@ -605,6 +608,34 @@
 
       </div>
     </section>
+    <!-- TAB 4: LESSONS -->
+    <section id="tab-lessons" class="space-y-6 hidden">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Lộ Trình Bài Học</h2>
+            <p class="text-sm text-slate-500">Mười bài theo thứ tự. Mỗi bài: lý thuyết, thực hành, rồi kiểm tra.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="lesson-progress" class="text-sm font-bold text-blue-700"></span>
+            <button onclick="resetProgress()"
+                    class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-all">
+              Xóa tiến độ
+            </button>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-[minmax(0,18rem)_1fr] gap-6">
+          <div id="lesson-list" class="flex flex-col gap-2">
+            <!-- Lesson buttons generated in JS -->
+          </div>
+          <div id="lesson-detail" class="min-h-[200px] border border-slate-200 rounded-xl p-5 bg-slate-50/60">
+            <!-- Lesson detail generated in JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
 
   </main>
 
@@ -1664,6 +1695,359 @@
       return true;
     }
 
+    /* ---- The lesson path --------------------------------------------------
+     * Ten numbered lessons, each theory then practice then a check. The
+     * practice step always hands the learner to a part of the app that
+     * already exists rather than reimplementing it, so a lesson is a route
+     * through the page, not a second copy of it.
+     */
+    const LESSONS = [
+      {
+        id: 1,
+        title: 'Làm quen bàn phím',
+        goal: 'Tìm được nốt Đô ở bất kỳ quãng tám nào, không cần đếm từ đầu đàn.',
+        theory: [
+          'Phím đen trên đàn xếp thành từng nhóm luân phiên: nhóm 2 phím rồi nhóm 3 phím, lặp đi lặp lại suốt bàn phím.',
+          'Nốt Đô luôn là phím trắng nằm ngay bên trái nhóm 2 phím đen. Tìm được nhóm 2 phím đen là tìm được Đô, không phải đếm gì cả.',
+          'Nốt Fa thì nằm ngay bên trái nhóm 3 phím đen. Hai mốc này đủ để định vị mọi nốt còn lại.',
+        ],
+        practice: { label: 'Đưa bàn phím về quãng Đô 4', action: "scrollKeyboardTo('C4')" },
+        quiz: [
+          { q: 'Nốt Đô nằm ở đâu so với nhóm 2 phím đen?', options: ['Ngay bên trái', 'Ngay bên phải', 'Ở giữa hai phím đen'], answer: 0 },
+          { q: 'Phím trắng ngay bên trái nhóm 3 phím đen là nốt gì?', options: ['Nốt Son', 'Nốt Fa', 'Nốt Si'], answer: 1 },
+          { q: 'Các nhóm phím đen xếp theo quy luật nào?', options: ['2 rồi 3, lặp lại', 'Toàn nhóm 2', '3 rồi 4, lặp lại'], answer: 0 },
+        ],
+      },
+      {
+        id: 2,
+        title: 'Khuông nhạc và khóa Sol',
+        goal: 'Hiểu khuông nhạc gồm những gì và khóa Sol dùng để làm gì.',
+        theory: [
+          'Khuông nhạc có 5 dòng kẻ và 4 khe nằm giữa các dòng. Nốt nhạc đặt trên dòng hoặc trong khe, càng cao trên khuông thì âm càng cao.',
+          'Khóa nhạc đặt ở đầu khuông quyết định mỗi dòng mang tên nốt gì. Khóa Sol dùng cho tay phải, vùng âm cao.',
+          'Nốt nào vượt quá 5 dòng kẻ thì viết trên dòng kẻ phụ — những vạch ngắn thêm vào phía trên hoặc phía dưới khuông.',
+        ],
+        practice: { label: 'Xem mẹo đọc nhanh khóa Sol', action: "switchTab('guide')" },
+        quiz: [
+          { q: 'Khuông nhạc có bao nhiêu dòng kẻ chính?', options: ['4 dòng', '5 dòng', '6 dòng'], answer: 1 },
+          { q: 'Nốt viết càng cao trên khuông thì âm thanh thế nào?', options: ['Càng cao', 'Càng thấp', 'Không đổi'], answer: 0 },
+          { q: 'Dòng kẻ phụ dùng để làm gì?', options: ['Trang trí', 'Ghi nốt vượt ra ngoài khuông', 'Đánh dấu ô nhịp'], answer: 1 },
+        ],
+      },
+      {
+        id: 3,
+        title: 'Đọc nốt khóa Sol',
+        goal: 'Đọc được nốt trên khuông khóa Sol mà không phải đếm từng dòng.',
+        theory: [
+          'Bốn nốt nằm trong khe của khóa Sol, đọc từ dưới lên, ghép thành chữ F-A-C-E — tức Fa, La, Đô, Mi.',
+          'Năm nốt nằm trên dòng, từ dưới lên, là Mi Son Si Rê Fa. Nhớ một câu cho dễ: "Em Sẽ Sang Rước Phượng".',
+          'Nốt Sol nằm ở dòng thứ hai từ dưới lên — chính là dòng mà khóa Sol cuộn quanh, nên khóa mới mang tên đó.',
+        ],
+        practice: { label: 'Chơi game nhận diện nốt', action: "switchTab('quiz')" },
+        quiz: [
+          { q: 'Bốn nốt trong khe khóa Sol ghép thành chữ gì?', options: ['F-A-C-E', 'C-A-G-E', 'B-E-A-D'], answer: 0 },
+          { q: 'Nốt Sol nằm ở dòng thứ mấy tính từ dưới lên?', options: ['Dòng 1', 'Dòng 2', 'Dòng 3'], answer: 1 },
+          { q: 'Nốt nằm ở dòng dưới cùng của khóa Sol là nốt gì?', options: ['Nốt Mi', 'Nốt Fa', 'Nốt Rê'], answer: 0 },
+        ],
+      },
+      {
+        id: 4,
+        title: 'Khóa Fa và tay trái',
+        goal: 'Đọc được nốt khóa Fa và biết vì sao tay trái dùng khóa này.',
+        theory: [
+          'Khóa Fa dùng cho vùng âm thấp, tức tay trái. Cùng một vị trí trên khuông, khóa Fa và khóa Sol đọc ra hai nốt khác nhau.',
+          'Bốn nốt trong khe khóa Fa, từ dưới lên, là La Đô Mi Son. Năm nốt trên dòng là Son Si Rê Fa La.',
+          'Nốt Đô 4 — Đô giữa — nằm ngay dưới khuông khóa Sol một dòng kẻ phụ, và ngay trên khuông khóa Fa một dòng kẻ phụ. Đó là nốt nối hai khuông lại với nhau.',
+        ],
+        practice: { label: 'Chuyển khuông sang khóa Fa', action: "setClef('bass')" },
+        quiz: [
+          { q: 'Khóa Fa dùng cho tay nào?', options: ['Tay phải', 'Tay trái', 'Cả hai như nhau'], answer: 1 },
+          { q: 'Nốt Đô giữa nằm ở đâu so với khuông khóa Fa?', options: ['Một dòng kẻ phụ phía trên', 'Một dòng kẻ phụ phía dưới', 'Ở dòng giữa'], answer: 0 },
+          { q: 'Cùng một dòng kẻ, khóa Fa và khóa Sol đọc ra?', options: ['Cùng một nốt', 'Hai nốt khác nhau', 'Tùy người đọc'], answer: 1 },
+        ],
+      },
+      {
+        id: 5,
+        title: 'Trường độ',
+        goal: 'Phân biệt nốt tròn, trắng, đen, móc đơn và biết mỗi loại ngân mấy phách.',
+        theory: [
+          'Hình dạng nốt cho biết nó ngân bao lâu. Nốt tròn 4 phách, nốt trắng 2 phách, nốt đen 1 phách, nốt móc đơn nửa phách.',
+          'Nốt tròn và nốt trắng có đầu rỗng; nốt đen và nốt móc đơn có đầu đặc. Nốt tròn không có đuôi, ba loại còn lại đều có.',
+          'Nốt móc đơn có thêm một cái móc ở đuôi. Cứ thêm một móc là trường độ lại chia đôi.',
+        ],
+        practice: { label: 'Nghe một câu có đủ các hình nốt', action: "switchTab('practice')" },
+        quiz: [
+          { q: 'Nốt tròn ngân mấy phách?', options: ['2 phách', '4 phách', '1 phách'], answer: 1 },
+          { q: 'Nốt nào có đầu rỗng và có đuôi?', options: ['Nốt trắng', 'Nốt đen', 'Nốt tròn'], answer: 0 },
+          { q: 'Một nốt móc đơn dài bằng bao nhiêu nốt đen?', options: ['Hai nốt đen', 'Nửa nốt đen', 'Bằng đúng một nốt đen'], answer: 1 },
+        ],
+      },
+      {
+        id: 6,
+        title: 'Nhịp 4/4 và vạch nhịp',
+        goal: 'Hiểu số chỉ nhịp, đếm được phách và giữ đều nhịp với máy gõ nhịp.',
+        theory: [
+          'Số chỉ nhịp đặt ở đầu bài. Số trên cho biết mỗi ô nhịp có mấy phách, số dưới cho biết lấy hình nốt nào làm một phách.',
+          'Nhịp 4/4 nghĩa là mỗi ô nhịp có 4 phách, mỗi phách là một nốt đen. Vạch nhịp là đường thẳng đứng chia các ô nhịp.',
+          'Phách đầu mỗi ô nhịp mạnh hơn các phách còn lại. Đếm "MỘT hai ba bốn" và nhấn vào tiếng "một".',
+        ],
+        practice: { label: 'Bật máy gõ nhịp nhịp 4/4', action: 'startMetronome()' },
+        quiz: [
+          { q: 'Trong nhịp 4/4, số 4 ở trên cho biết điều gì?', options: ['Mỗi ô nhịp có 4 phách', 'Bài dài 4 ô nhịp', 'Chơi bằng 4 ngón'], answer: 0 },
+          { q: 'Vạch nhịp dùng để làm gì?', options: ['Chia các ô nhịp', 'Báo hết bài', 'Đánh dấu nốt cao'], answer: 0 },
+          { q: 'Phách nào trong ô nhịp là phách mạnh?', options: ['Phách cuối', 'Phách đầu', 'Không phách nào'], answer: 1 },
+        ],
+      },
+      {
+        id: 7,
+        title: 'Dấu lặng',
+        goal: 'Nhận ra các dấu lặng và hiểu im lặng cũng được tính phách.',
+        theory: [
+          'Dấu lặng là khoảng im lặng có tính thời gian. Mỗi hình nốt đều có dấu lặng tương ứng, ngân đúng bằng chừng ấy phách.',
+          'Lặng tròn treo dưới dòng thứ tư, lặng trắng nằm trên dòng thứ ba. Hai dấu này rất giống nhau, chỉ khác chỗ đặt — nhớ kỹ điểm đó.',
+          'Im lặng vẫn phải đếm. Bỏ qua dấu lặng là ô nhịp thiếu phách và cả bài lệch đi.',
+        ],
+        practice: { label: 'Xem câu nhạc có dấu lặng', action: "switchTab('practice')" },
+        quiz: [
+          { q: 'Dấu lặng có được tính thời gian không?', options: ['Có, đếm như nốt nhạc', 'Không, cứ bỏ qua', 'Chỉ tính khi ở cuối bài'], answer: 0 },
+          { q: 'Lặng tròn được đặt thế nào?', options: ['Treo dưới dòng thứ tư', 'Nằm trên dòng thứ ba', 'Ở dưới khuông'], answer: 0 },
+          { q: 'Lặng đen ngân bao lâu?', options: ['1 phách', '4 phách', 'Nửa phách'], answer: 0 },
+        ],
+      },
+      {
+        id: 8,
+        title: 'Gam Đô trưởng và ngón bấm',
+        goal: 'Chơi được gam Đô trưởng hai tay với ngón bấm đúng.',
+        theory: [
+          'Gam Đô trưởng gồm bảy nốt trắng liên tiếp từ Đô đến Đô, không có phím đen nào.',
+          'Bàn tay chỉ có 5 ngón mà gam có 8 nốt, nên phải đổi thế tay giữa chừng. Tay phải đi lên: luồn ngón cái xuống dưới bàn tay ở nốt Fa.',
+          'Tay trái đi lên thì ngược lại: bắc ngón 3 qua ngón cái ở nốt La. Luyện chậm cho tay quen đường trước khi tăng tốc.',
+        ],
+        practice: { label: 'Nghe và xem gam Đô trưởng', action: 'playScale()' },
+        quiz: [
+          { q: 'Gam Đô trưởng có bao nhiêu phím đen?', options: ['Không có phím đen nào', 'Hai phím đen', 'Một phím đen'], answer: 0 },
+          { q: 'Tay phải đi lên thì luồn ngón cái ở nốt nào?', options: ['Nốt Fa', 'Nốt Son', 'Nốt Si'], answer: 0 },
+          { q: 'Vì sao phải luồn ngón cái?', options: ['Vì tay chỉ có 5 ngón mà gam có 8 nốt', 'Vì như vậy nghe hay hơn', 'Vì sách bảo thế'], answer: 0 },
+        ],
+      },
+      {
+        id: 9,
+        title: 'Hợp âm tay trái',
+        goal: 'Bấm được bảy hợp âm cơ bản và một vòng hợp âm hoàn chỉnh.',
+        theory: [
+          'Hợp âm là nhiều nốt vang lên cùng lúc. Hợp âm ba nốt cơ bản lấy nốt gốc, rồi cách một nốt lấy một nốt, hai lần.',
+          'Bảy hợp âm C, Dm, Em, F, G, G7, Am đủ để đệm hầu hết bài trong giọng Đô trưởng.',
+          'Thế đảo là cũng những nốt ấy nhưng xếp lại thứ tự, để tay đỡ phải nhảy xa khi chuyển hợp âm.',
+        ],
+        practice: { label: 'Nghe vòng hợp âm C – G – Am – F', action: 'playProgression(0)' },
+        quiz: [
+          { q: 'Hợp âm ba nốt được dựng thế nào?', options: ['Lấy nốt gốc rồi cách một nốt lấy một nốt', 'Ba nốt liền nhau', 'Ba nốt bất kỳ'], answer: 0 },
+          { q: 'Thế đảo hợp âm để làm gì?', options: ['Để tay đỡ nhảy xa khi chuyển hợp âm', 'Để đổi sang hợp âm khác', 'Để chơi nhanh hơn'], answer: 0 },
+          { q: 'Hợp âm Am gồm những nốt nào?', options: ['La – Đô – Mi', 'La – Đô# – Mi', 'La – Rê – Fa'], answer: 0 },
+        ],
+      },
+      {
+        id: 10,
+        title: 'Ghép hai tay, bài hát đầu tiên',
+        goal: 'Chơi trọn một bài: tay phải giai điệu, tay trái hợp âm.',
+        theory: [
+          'Tập riêng từng tay cho thật chắc trước đã. Ghép hai tay khi mỗi tay còn chưa thuộc thì chỉ tổ rối.',
+          'Ghép thì bắt đầu thật chậm — chậm hơn mức bạn tưởng là cần. Đúng trước, nhanh sau; chơi nhanh mà sai thì chỉ luyện cho quen cái sai.',
+          'Tập từng câu một, lặp lại tới khi trôi chảy rồi mới nối các câu lại. Trang này có nút lặp từng câu cho việc đó.',
+        ],
+        practice: { label: 'Mở bài hát tập chơi', action: "setSong('buom-vang')" },
+        quiz: [
+          { q: 'Nên làm gì trước khi ghép hai tay?', options: ['Tập riêng từng tay cho chắc', 'Ghép ngay cho quen', 'Tăng tốc độ lên trước'], answer: 0 },
+          { q: 'Khi mới ghép hai tay nên chơi thế nào?', options: ['Thật chậm', 'Đúng tốc độ bài', 'Nhanh hết mức'], answer: 0 },
+          { q: 'Chơi nhanh mà sai thì hậu quả là gì?', options: ['Luyện cho quen cái sai', 'Không sao, dần sẽ đúng', 'Nhanh thuộc bài hơn'], answer: 0 },
+        ],
+      },
+    ];
+
+    const LESSON_STORAGE_KEY = 'tuhocdan.progress.v1';
+    let lessonProgress = { done: [] };
+    let openLesson = null;
+
+    // localStorage throws in some privacy modes and can hold anything at all,
+    // including whatever an older version of this page wrote. Treat it as
+    // untrusted input rather than as somewhere our own data is waiting.
+    function loadProgress() {
+      try {
+        const raw = window.localStorage && window.localStorage.getItem(LESSON_STORAGE_KEY);
+        if (!raw) return { done: [] };
+        const parsed = JSON.parse(raw);
+        const ids = Array.isArray(parsed && parsed.done) ? parsed.done : [];
+        const valid = ids.filter(id => LESSONS.some(l => l.id === id));
+        return { done: [...new Set(valid)].sort((a, b) => a - b) };
+      } catch (e) {
+        console.error('loadProgress: saved progress could not be read - starting fresh.', e);
+        return { done: [] };
+      }
+    }
+
+    function saveProgress() {
+      try {
+        if (window.localStorage) window.localStorage.setItem(LESSON_STORAGE_KEY, JSON.stringify(lessonProgress));
+        return true;
+      } catch (e) {
+        console.error('saveProgress: progress could not be saved.', e);
+        return false;
+      }
+    }
+
+    function markLessonDone(id) {
+      if (!LESSONS.some(l => l.id === id)) {
+        console.error(`markLessonDone: there is no lesson ${id}.`);
+        return false;
+      }
+      if (!lessonProgress.done.includes(id)) {
+        lessonProgress.done.push(id);
+        lessonProgress.done.sort((a, b) => a - b);
+      }
+      saveProgress();
+      renderLessonList();
+      return true;
+    }
+
+    function resetProgress() {
+      lessonProgress = { done: [] };
+      saveProgress();
+      openLesson = null;
+      renderLessonList();
+      renderLessonDetail();
+      return true;
+    }
+
+    const lessonIsDone = (id) => lessonProgress.done.includes(id);
+
+    function renderLessonList() {
+      const list = document.getElementById('lesson-list');
+      if (!list) return;
+      list.innerHTML = LESSONS.map(lesson => {
+        const done = lessonIsDone(lesson.id);
+        const open = openLesson === lesson.id;
+        return `<button onclick="openLessonCard(${lesson.id})" class="w-full text-left px-4 py-3 rounded-xl border transition-all ${
+          open ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+        }">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-black ${
+              done ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+            }">${done ? '✓' : lesson.id}</span>
+            <span class="text-sm font-bold text-slate-800">${lesson.title}</span>
+          </div>
+        </button>`;
+      }).join('');
+
+      const bar = document.getElementById('lesson-progress');
+      if (bar) {
+        const n = lessonProgress.done.length;
+        bar.innerText = `Đã xong ${n}/${LESSONS.length} bài`;
+      }
+    }
+
+    function openLessonCard(id) {
+      if (!LESSONS.some(l => l.id === id)) {
+        console.error(`openLessonCard: there is no lesson ${id}.`);
+        return false;
+      }
+      openLesson = id;
+      renderLessonList();
+      renderLessonDetail();
+      return true;
+    }
+
+    function renderLessonDetail() {
+      const panel = document.getElementById('lesson-detail');
+      if (!panel) return;
+
+      const lesson = LESSONS.find(l => l.id === openLesson);
+      if (!lesson) {
+        panel.innerHTML = `<p class="text-sm text-slate-500">Chọn một bài ở bên trái để bắt đầu.</p>`;
+        return;
+      }
+
+      const theory = lesson.theory.map(p => `<p class="text-sm text-slate-700 leading-relaxed mb-2">${p}</p>`).join('');
+      const quiz = lesson.quiz.map((item, qi) => `
+        <div class="mb-4">
+          <p class="text-sm font-semibold text-slate-800 mb-2">${qi + 1}. ${item.q}</p>
+          <div class="flex flex-col gap-1.5">
+            ${item.options.map((opt, oi) =>
+              `<button onclick="answerLessonQuiz(${lesson.id}, ${qi}, ${oi})"
+                       id="lesson-answer-${qi}-${oi}"
+                       class="text-left px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition-all">${opt}</button>`
+            ).join('')}
+          </div>
+        </div>`).join('');
+
+      panel.innerHTML = `
+        <h3 class="text-lg font-bold text-slate-900 mb-1">Bài ${lesson.id} · ${lesson.title}</h3>
+        <p class="text-sm text-blue-700 font-semibold mb-4">${lesson.goal}</p>
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Lý thuyết</p>
+        ${theory}
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mt-5 mb-2">Thực hành</p>
+        <button onclick="${lesson.practice.action}"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-sm hover:bg-blue-700 transition-all mb-5">
+          ${lesson.practice.label}
+        </button>
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Kiểm tra</p>
+        ${quiz}
+        <p id="lesson-result" class="text-sm font-bold text-slate-600"></p>`;
+
+      lessonAnswers = {};
+      showLessonResult(lesson);
+    }
+
+    let lessonAnswers = {};
+
+    function answerLessonQuiz(lessonId, questionIndex, optionIndex) {
+      const lesson = LESSONS.find(l => l.id === lessonId);
+      if (!lesson || !lesson.quiz[questionIndex]) {
+        console.error(`answerLessonQuiz: lesson ${lessonId} has no question ${questionIndex}.`);
+        return false;
+      }
+      lessonAnswers[questionIndex] = optionIndex;
+
+      const correct = optionIndex === lesson.quiz[questionIndex].answer;
+      lesson.quiz[questionIndex].options.forEach((_, oi) => {
+        const btn = document.getElementById(`lesson-answer-${questionIndex}-${oi}`);
+        if (!btn) return;
+        if (oi === optionIndex) {
+          btn.className = correct
+            ? 'text-left px-3 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-sm font-semibold text-green-800 transition-all'
+            : 'text-left px-3 py-2 rounded-lg border-2 border-red-400 bg-red-50 text-sm font-semibold text-red-800 transition-all';
+        }
+      });
+
+      showLessonResult(lesson);
+      return correct;
+    }
+
+    function lessonScore(lesson) {
+      return lesson.quiz.reduce((n, item, qi) => n + (lessonAnswers[qi] === item.answer ? 1 : 0), 0);
+    }
+
+    function showLessonResult(lesson) {
+      const out = document.getElementById('lesson-result');
+      if (!out) return;
+      const answered = Object.keys(lessonAnswers).length;
+      if (answered === 0) { out.innerText = ''; return; }
+
+      const score = lessonScore(lesson);
+      if (answered < lesson.quiz.length) {
+        out.innerText = `Đã trả lời ${answered}/${lesson.quiz.length} câu.`;
+        return;
+      }
+      if (score === lesson.quiz.length) {
+        out.innerText = 'Đúng cả ba câu — bài này xong rồi.';
+        markLessonDone(lesson.id);
+      } else {
+        out.innerText = `Đúng ${score}/${lesson.quiz.length} câu. Đọc lại phần lý thuyết rồi thử lại nhé.`;
+      }
+    }
+
     /* ---- Songs to play ----------------------------------------------------
      * Public domain only, as the backlog requires, and only melodies whose
      * notes I could set down with confidence - a song encoded from a hazy
@@ -2147,10 +2531,12 @@
       document.getElementById('tab-practice').classList.add('hidden');
       document.getElementById('tab-guide').classList.add('hidden');
       document.getElementById('tab-quiz').classList.add('hidden');
+      document.getElementById('tab-lessons').classList.add('hidden');
 
       document.getElementById('tab-btn-practice').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
       document.getElementById('tab-btn-guide').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
       document.getElementById('tab-btn-quiz').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
+      document.getElementById('tab-btn-lessons').className = "px-4 py-2 rounded-lg text-slate-300 hover:text-white transition-all";
 
       if (tab === 'practice') {
         document.getElementById('tab-practice').classList.remove('hidden');
@@ -2164,6 +2550,11 @@
         document.getElementById('tab-quiz').classList.remove('hidden');
         document.getElementById('tab-btn-quiz').className = "px-4 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all";
         startQuizNextQuestion();
+      } else if (tab === 'lessons') {
+        document.getElementById('tab-lessons').classList.remove('hidden');
+        document.getElementById('tab-btn-lessons').className = "px-4 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all";
+        renderLessonList();
+        renderLessonDetail();
       }
     }
 
@@ -2171,6 +2562,9 @@
     window.onload = function() {
       buildPianoKeyboard();
       buildBeatLights();
+      lessonProgress = loadProgress();
+      renderLessonList();
+      renderLessonDetail();
       renderDemoPhrase();
       showScale();
       showSong();
