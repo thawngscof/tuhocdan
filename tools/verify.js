@@ -21,11 +21,11 @@ const path = require('path');
  * script's expectations, and the script itself to run. */
 const ROOT = path.join(__dirname, '..');
 const MARKUP = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-const STYLES = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+const STYLESHEET = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
 const SCRIPT = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 
 // Everything that is not the script, for the checks that read the page as text.
-const html = MARKUP + '\n' + STYLES;
+const html = MARKUP + '\n' + STYLESHEET;
 
 /* ---- load the page script under a stub DOM ---------------------------- */
 
@@ -48,9 +48,9 @@ global.window = {};
 const script = [null, SCRIPT];      // kept in this shape so script[1] still reads
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece, VOICES, setVoice, STYLES, DRUMS, accompaniment, setStyle, setAccompanimentChord, scheduleAccompanimentBar, accompanimentScheduler, startAccompaniment, stopAccompaniment, scheduleDrum, lowerOctave, SINGLE_FINGER_CHORDS, setSingleFingerMode, singleFingerChord, handleSingleFinger, isLeftHandKey };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece, VOICES, setVoice, STYLES, DRUMS, accompaniment, setStyle, setAccompanimentChord, scheduleAccompanimentBar, accompanimentScheduler, startAccompaniment, stopAccompaniment, scheduleDrum, lowerOctave, SINGLE_FINGER_CHORDS, setSingleFingerMode, singleFingerChord, handleSingleFinger, isLeftHandKey } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -3656,6 +3656,248 @@ console.error = () => playLogged++;
 const noPiece = playTwoHands('không-có');
 console.error = grandErr;
 check('a piece that does not exist is refused', noPiece === false && playLogged === 1);
+
+/* ---- 32. playing it like an organ ----------------------------------------
+ * The part that makes this an organ rather than a keyboard in general: a
+ * choice of sound, an accompaniment that plays itself, and a left hand that
+ * names chords instead of holding them down.
+ */
+
+check(`there are several voices to choose from (${Object.keys(VOICES).length})`,
+      Object.keys(VOICES).length >= 3);
+check('every voice has a Vietnamese name and a full envelope',
+      Object.values(VOICES).every(v => v.label
+        && ['attack', 'decay', 'sustain', 'release'].every(k => typeof v[k] === 'number' && v[k] >= 0)),
+      Object.entries(VOICES).filter(([, v]) => !v.label).map(([k]) => k).join(', '));
+check('every voice uses a waveform the browser has',
+      Object.values(VOICES).every(v => ['sine', 'square', 'sawtooth', 'triangle'].includes(v.wave)),
+      Object.entries(VOICES).filter(([, v]) => !['sine', 'square', 'sawtooth', 'triangle'].includes(v.wave)).map(([k]) => k).join(', '));
+check('no two voices sound the same',
+      new Set(Object.values(VOICES).map(v => `${v.wave}|${v.attack}|${v.decay}|${v.sustain}|${v.release}`)).size
+        === Object.keys(VOICES).length,
+      'two voices have identical waveform and envelope');
+check('every sustain level is a fraction of the peak, not a level of its own',
+      Object.values(VOICES).every(v => v.sustain > 0 && v.sustain <= 1));
+
+/* 32a. choosing a voice changes the note that comes out */
+
+audio.ctx.currentTime = 10000;
+const voiceTrace = {};
+for (const [id, spec] of Object.entries(VOICES)) {
+  check(`the "${spec.label}" voice can be chosen`, setVoice(id) === true);
+  const played = scenario(() => playTone(440, { at: 10000, hold: 1 }));
+  const osc = played.nodes.find(n => n.kind === 'oscillator');
+  const gains = played.events.filter(e => e.param === 'gain');
+  voiceTrace[id] = { wave: osc.type, times: gains.map(e => e.t) };
+  check(`the "${spec.label}" voice uses its own waveform`, osc.type === spec.wave, `${osc.type}`);
+  check(`the "${spec.label}" voice uses its own attack`,
+        Math.abs(gains[1].t - (10000 + spec.attack)) < 1e-9,
+        `attack lands at ${gains[1].t - 10000}s, the voice asks for ${spec.attack}s`);
+}
+check('the voices really do produce different envelopes',
+      new Set(Object.values(voiceTrace).map(v => JSON.stringify(v.times))).size === Object.keys(VOICES).length,
+      'two voices scheduled identical envelopes');
+
+let voiceLogged = 0;
+let organErr = console.error;
+console.error = () => voiceLogged++;
+const noVoice = setVoice('kèn đồng');
+console.error = organErr;
+check('a voice that does not exist is refused', noVoice === false && voiceLogged === 1);
+setVoice('organ');
+
+/* 32b. the styles are one bar each, and say what they are */
+
+check(`there are several styles (${Object.keys(STYLES).length})`, Object.keys(STYLES).length >= 3);
+for (const [id, style] of Object.entries(STYLES)) {
+  check(`${id}: it has a name, a tempo and a bar length`,
+        Boolean(style.label) && style.bpm >= 30 && style.bpm <= 200 && style.beats >= 2);
+  const events = [...style.drums, ...style.bass, ...style.chords];
+  check(`${id}: nothing in the pattern falls outside its own bar`,
+        events.every(([beat]) => beat >= 0 && beat < style.beats),
+        events.filter(([b]) => b < 0 || b >= style.beats).map(([b]) => b).join(', '));
+  check(`${id}: every drum in the pattern is a drum that exists`,
+        style.drums.every(([, kind]) => DRUMS[kind]),
+        style.drums.filter(([, k]) => !DRUMS[k]).map(([, k]) => k).join(', '));
+  check(`${id}: the bass names a note of the chord, not a pitch`,
+        style.bass.every(([, which]) => Number.isInteger(which) && which >= 0 && which <= 3),
+        'a style hard-codes a pitch, so it would only work over one chord');
+  check(`${id}: there is something on the first beat`,
+        events.some(([beat]) => beat === 0), 'the bar starts on nothing');
+  check(`${id}: it has drums, a bass and chords`,
+        style.drums.length > 0 && style.bass.length > 0 && style.chords.length > 0);
+}
+
+let styleLogged = 0;
+organErr = console.error;
+console.error = () => styleLogged++;
+const noStyle = setStyle('chachacha');
+console.error = organErr;
+check('a style that does not exist is refused', noStyle === false && styleLogged === 1);
+setPlaybackBpm(55);            // a tempo no style asks for, so the change shows
+check('choosing a style takes its tempo',
+      setStyle('disco') === true && player.bpm === STYLES.disco.bpm,
+      `${player.bpm} vs ${STYLES.disco.bpm}`);
+setPlaybackBpm(55);
+check('a different style brings a different tempo',
+      setStyle('ballad') === true && player.bpm === STYLES.ballad.bpm,
+      `${player.bpm} vs ${STYLES.ballad.bpm}`);
+
+/* 32c. a bar of accompaniment plays the pattern over the chord */
+
+setStyle('ballad');
+setAccompanimentChord('C');
+audio.ctx.currentTime = 11000;
+const organBar = scenario(() => scheduleAccompanimentBar(11000));
+check('a bar of accompaniment raises no error', organBar.errors === 0 && organBar.result === true);
+
+const organStyle = STYLES.ballad;
+const organWantNotes = organStyle.bass.length + organStyle.chords.length * CHORDS.C.notes.length;
+const organBarOsc = organBar.nodes.filter(n => n.kind === 'oscillator');
+check('a bar plays its drums, its bass and its chords',
+      organBarOsc.length === organStyle.drums.length + organWantNotes,
+      `${organBarOsc.length} sound(s), want ${organStyle.drums.length} drums plus ${organWantNotes} notes`);
+check('everything in the bar goes through the limiter',
+      organBar.nodes.filter(n => n.kind === 'gain').every(g => g.out.includes(limiter)));
+check('nothing in the bar is scheduled before the bar starts',
+      organBarOsc.every(o => o.started[0] >= 11000 - 1e-9));
+const organSecPerBeat = 60 / player.bpm;
+check('nothing in the bar spills past the end of it',
+      organBarOsc.every(o => o.started[0] < 11000 + organStyle.beats * organSecPerBeat),
+      'a pattern event landed in the next bar');
+
+// The bass has to follow the chord, which is the whole point of a style.
+// The drums set a frequency as well, and the kick's 45Hz is lower than any
+// note on the keyboard - so "the lowest frequency in the bar" found the drum,
+// not the bass, and read the same over every chord.
+const NOTE_FREQS = new Set(notesData.bass.map(n => n.freq));
+const lowestNote = (result) => result.events
+  .filter(e => e.param === 'frequency' && NOTE_FREQS.has(e.v))
+  .map(e => e.v).sort((a, b) => a - b)[0];
+
+setAccompanimentChord('F');
+audio.ctx.currentTime = 11100;
+const overF = scenario(() => scheduleAccompanimentBar(11100));
+const bassRootF = lowestNote(overF);
+setAccompanimentChord('C');
+audio.ctx.currentTime = 11200;
+const overC = scenario(() => scheduleAccompanimentBar(11200));
+const bassRootC = lowestNote(overC);
+check('the accompaniment follows the chord rather than playing one fixed set of notes',
+      Math.abs(bassRootF - bassRootC) > 1,
+      `the lowest note is ${bassRootC}Hz over C and ${bassRootF}Hz over F`);
+
+const cRoot = notesData.bass.find(n => n.key === lowerOctave(CHORDS.C.notes[0]));
+check('the bass plays the root of the chord, an octave below it',
+      cRoot && Math.abs(bassRootC - cRoot.freq) < 1e-6,
+      `lowest note ${bassRootC}Hz, C2 is ${cRoot && cRoot.freq}Hz`);
+
+let chordLogged = 0;
+organErr = console.error;
+console.error = () => chordLogged++;
+const noChord = setAccompanimentChord('Xm');
+console.error = organErr;
+check('an accompaniment chord that does not exist is refused',
+      noChord === false && chordLogged === 1 && accompaniment.chord === 'C');
+
+/* 32d. starting and stopping the accompaniment */
+
+stopAccompaniment();
+audio.ctx.currentTime = 12000;
+const accompStarted = scenario(() => startAccompaniment());
+check('the accompaniment starts', accompStarted.result === true && accompaniment.running === true);
+check('starting it lays down a bar straight away', accompaniment.bars >= 1);
+const accompOsc = accompStarted.nodes.filter(n => n.kind === 'oscillator');
+check('nothing in the first bar is scheduled in the past',
+      accompOsc.length > 0 && accompOsc.every(o => o.started[0] >= 12000 - 1e-9),
+      `earliest sound at ${Math.min(...accompOsc.map(o => o.started[0]))}, the clock says 12000`);
+check('starting an accompaniment that is already running does nothing',
+      startAccompaniment() === false);
+stopAccompaniment();
+check('stopping clears the timer and the flag',
+      accompaniment.running === false && accompaniment.timer === null);
+check('stopping leaves no wake-up timer behind', intervalsOpen === 0,
+      `${intervalsOpen} interval(s) still running`);
+audio.ctx.currentTime = 12600;
+check('the scheduler does nothing once stopped',
+      scenario(() => accompanimentScheduler()).nodes.length === 0);
+
+/* 32e. the drums */
+
+for (const [kind, spec] of Object.entries(DRUMS)) {
+  audio.ctx.currentTime = 13000;
+  const hit = scenario(() => scheduleDrum(kind, 13000));
+  check(`the ${kind} is a sound, not silence`,
+        hit.result === true && hit.nodes.filter(n => n.kind === 'oscillator').length === 1);
+  const gains = hit.events.filter(e => e.param === 'gain');
+  check(`the ${kind} starts silent, peaks and dies away`,
+        gains[0].v <= 0.001 && gains[1].v === spec.peak && gains[2].v <= 0.001);
+  check(`the ${kind} is short`, spec.decay <= 0.4, `${spec.decay}s`);
+  check(`the ${kind} stops`, hit.nodes.find(n => n.kind === 'oscillator').stopped.length === 1);
+}
+check('the kick is lower than the hat',
+      DRUMS.kick.from < DRUMS.hat.from);
+let drumLogged = 0;
+organErr = console.error;
+console.error = () => drumLogged++;
+const noDrum = scheduleDrum('cồng', 13500);
+console.error = organErr;
+check('a drum that does not exist is refused', noDrum === false && drumLogged === 1);
+
+/* 32f. one finger naming a chord */
+
+check('the white keys of C major name chords',
+      Object.keys(SINGLE_FINGER_CHORDS).length === 6
+        && Object.values(SINGLE_FINGER_CHORDS).every(id => CHORDS[id]),
+      Object.entries(SINGLE_FINGER_CHORDS).filter(([, id]) => !CHORDS[id]).join(', '));
+check('each chord is built on the key that names it',
+      Object.entries(SINGLE_FINGER_CHORDS).every(([letter, id]) => CHORDS[id].notes[0].startsWith(letter)),
+      Object.entries(SINGLE_FINGER_CHORDS).filter(([l, id]) => !CHORDS[id].notes[0].startsWith(l)).join(', '));
+check('B is left unmapped rather than bent into a chord it is not',
+      !SINGLE_FINGER_CHORDS.b && singleFingerChord('b/3') === null);
+check('a black key names no chord', singleFingerChord('c#/3') === null);
+check('a white key names its chord', singleFingerChord('f/3') === 'F');
+
+check('keys below the split belong to the left hand',
+      isLeftHandKey('c/3') && isLeftHandKey('b/3') && !isLeftHandKey('c/4') && !isLeftHandKey('g/4'));
+
+// These two have to be told apart: with the accompaniment already stopped,
+// "the mode is off" and "the accompaniment is off" are the same test twice.
+audio.ctx.currentTime = 13900;
+startAccompaniment();
+setSingleFingerMode(false);
+setAccompanimentChord('C');
+check('with the mode off, a left-hand key is just a note',
+      handleSingleFinger('f/3') === null && accompaniment.chord === 'C',
+      'a left-hand key changed the chord with single-finger mode switched off');
+stopAccompaniment();
+
+setSingleFingerMode(true);
+check('with the accompaniment off, a left-hand key is just a note',
+      handleSingleFinger('f/3') === null && accompaniment.chord === 'C');
+
+audio.ctx.currentTime = 14000;
+startAccompaniment();
+check('one left-hand key changes the chord the accompaniment plays',
+      handleSingleFinger('f/3') === 'F' && accompaniment.chord === 'F');
+check('a right-hand key is still a melody note, not a chord change',
+      handleSingleFinger('g/4') === null && accompaniment.chord === 'F');
+
+let unmappedLogged = 0;
+organErr = console.error;
+console.error = () => unmappedLogged++;
+const noMapping = handleSingleFinger('b/3');
+console.error = organErr;
+check('a key that names no chord says so rather than guessing',
+      noMapping === null && unmappedLogged === 1 && accompaniment.chord === 'F');
+
+check('pressing a left-hand key on the instrument changes the chord',
+      (() => { setAccompanimentChord('C'); handleKeyClick('g/3'); return accompaniment.chord === 'G'; })(),
+      'the single-finger chord is not wired to the keys');
+stopAccompaniment();
+setSingleFingerMode(false);
+setVoice('organ');
+setStyle('ballad');
 
 /* ---- summary ----------------------------------------------------------- */
 

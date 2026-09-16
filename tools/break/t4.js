@@ -29,17 +29,17 @@ const MUTATIONS = [
    p => p.replace('console.error(`renderScoreSVG: finger "${item.finger}" on "${item.key}" is not 1-5 - skipped.`);', '')],
 
   ['the number never reaches the viewBox fitter',
-   p => p.replace('        seen(fingerY - 9);\n', '')],
+   p => p.replace('      seen(fingerY - 9);\n', '')],
 
   ['a finger on a rest is accepted quietly',
    p => p.replace("console.error('renderScoreSVG: a rest has no finger - the number was dropped.');", '')],
 
   ['the label no longer steps out of the way',
-   p => p.replace('const y = fingerY === null ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);', 'const y = LABEL_Y;')],
-
+   p => p.replace('const y = fingerY === null || fingerY === undefined ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);',
+                  'const y = LABEL_Y;')],
   ['the label moves even when there is no finger',
-   p => p.replace('const y = fingerY === null ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);', 'const y = LABEL_Y - 30;')],
-
+   p => p.replace('const y = fingerY === null || fingerY === undefined ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);',
+                  'const y = LABEL_Y - 30;')],
   ['setKeyFingering marks every key, not just the ones asked for',
    p => p.replace('const fingerBadge = (k) => keyFingering[k.key]', 'const fingerBadge = (k) => keyFingering[k.key] || Object.keys(keyFingering).length')],
 

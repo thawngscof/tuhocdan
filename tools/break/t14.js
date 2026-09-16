@@ -15,7 +15,7 @@ const MUTATIONS = [
   ['every note drawn with a flat, asked for or not',
    p => p.replace("const useFlat = spellFlat && stack.every(n => n.acc);", "const useFlat = true;")],
   ['respelling a natural note accepted silently',
-   p => p.replace("      console.error(`renderScoreSVG: \"${item.key}\" has no sharp to respell as a flat.`);", '')],
+   p => p.replace("    console.error(`renderScoreSVG: \"${item.key}\" has no sharp to respell as a flat.`);", '')],
   ['the flat name given the same letter as the sharp',
    p => p.replace("const FLAT_SPELLING = { 'c#': 'd♭', 'd#': 'e♭', 'f#': 'g♭', 'g#': 'a♭', 'a#': 'b♭' };",
               "const FLAT_SPELLING = { 'c#': 'c♭', 'd#': 'd♭', 'f#': 'f♭', 'g#': 'g♭', 'a#': 'a♭' };")],

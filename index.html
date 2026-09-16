@@ -224,6 +224,46 @@
 
 
 
+
+      <!-- Organ: voices, styles, single-finger chords -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="mb-4">
+          <h2 class="text-lg font-bold text-slate-900">Chơi Theo Kiểu Đàn Organ</h2>
+          <p class="text-sm text-slate-500">Khác piano ở chỗ này: chọn tiếng, bật điệu, rồi tay trái chỉ việc <em>gọi tên</em> hợp âm cho đàn tự đệm.</p>
+        </div>
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Chọn tiếng</p>
+        <div id="voice-buttons" class="flex flex-wrap gap-2 mb-5">
+          <!-- Voice buttons generated in JS -->
+        </div>
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Điệu đệm</p>
+        <div id="style-buttons" class="flex flex-wrap gap-2 mb-3">
+          <!-- Style buttons generated in JS -->
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+          <button id="accomp-toggle" onclick="toggleAccompaniment()"
+                  class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm hover:bg-blue-700 transition-all">Bật điệu</button>
+          <span class="text-sm text-slate-500">Hợp âm đang đệm:</span>
+          <span id="accomp-chord" class="text-sm font-bold text-blue-700">C — Đô trưởng</span>
+        </div>
+
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Đổi hợp âm</p>
+        <div id="accomp-chords" class="flex flex-wrap gap-2 mb-5">
+          <!-- Chord buttons generated in JS -->
+        </div>
+
+        <label class="flex items-start gap-2 text-sm text-slate-700">
+          <input id="single-finger" type="checkbox" onchange="setSingleFingerMode(this.checked)" class="accent-blue-600 w-4 h-4 mt-0.5">
+          <span>
+            <span class="font-semibold">Bấm hợp âm một ngón.</span>
+            Bật điệu rồi bấm <strong>một phím trắng dưới Đô 4</strong> — Đô, Rê, Mi, Fa, Sol, La — là đổi hợp âm đệm.
+            Phím Si không có hợp âm trong bảy hợp âm trang này dạy, nên để trống.
+          </span>
+        </label>
+      </div>
+
       <!-- Two hands -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">

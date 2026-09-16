@@ -22,7 +22,7 @@ const MUTATIONS = [
   ['an unknown chord name is accepted',
    p => p.replace('  if (!chord) {\n    console.error(`chordVoicing: no chord called "${chordId}".`);\n    return null;\n  }', '  if (!chord) { return CHORDS.C; }')],
   ['a chord draws a stem per note',
-   p => p.replace('    if (shape.stem) {\n      const dir = stemUp ? -1 : 1;', '    for (const _s of stack) if (shape.stem) {\n      const dir = stemUp ? -1 : 1;')],
+   p => p.replace('  if (shape.stem) {\n    const dir = stemUp ? -1 : 1;', '  for (const _s of stack) if (shape.stem) {\n    const dir = stemUp ? -1 : 1;')],
   ['the stack is spread sideways instead of stacked',
    p => p.replace('const headX = shifted[i] ? noteX + (stemUp ? 11 : -11) : noteX;', 'const headX = noteX + i * 12;')],
   ['stem direction taken from the lowest note only',

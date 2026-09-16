@@ -4,13 +4,11 @@ const { run } = require('./harness.js');
 
 const MUTATIONS = [
   ['whole rest moved onto the middle line',
-   p => p.replace('const top = durKey === "w" ? yAtStep(6) : mid - half;',
-              'const top = durKey === "w" ? yAtStep(4) : mid - half;')],
-
+   p => p.replace('const top = durKey === "w" ? lineY1 - 6 * (lineSpacing / 2) : mid - half;',
+                  'const top = durKey === "w" ? mid : mid - half;')],
   ['half rest drawn exactly like the whole rest',
-   p => p.replace('const top = durKey === "w" ? yAtStep(6) : mid - half;',
-              'const top = yAtStep(6);')],
-
+   p => p.replace('const top = durKey === "w" ? lineY1 - 6 * (lineSpacing / 2) : mid - half;',
+                  'const top = lineY1 - 6 * (lineSpacing / 2);')],
   ['rest also emits a stem',
    p => p.replace('return `<rect x="${x - 6}" y="${top}" width="12" height="${half}" fill="${INK}"/>`;',
               'return `<rect x="${x - 6}" y="${top}" width="12" height="${half}" fill="${INK}"/>` + `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + 20}" stroke="#0f172a" stroke-width="1.5"/>`;')],
@@ -33,8 +31,8 @@ const MUTATIONS = [
    p => p.replace('console.error(`renderScoreSVG: unknown duration "${restDur}" on a rest - drawing a lặng đen.`);', '')],
 
   ['rest drawn far below the staff, outside the fitted viewBox',
-   p => p.replace('const mid = yAtStep(4);                      // the middle line',
-              'const mid = yAtStep(4) + 400;')],
+   p => p.replace('const mid = lineY1 - 4 * (lineSpacing / 2);                      // the middle line',
+                  'const mid = lineY1 - 4 * (lineSpacing / 2) + 400;')],
 ];
 
 const { missed } = run('T2 - rests', MUTATIONS);

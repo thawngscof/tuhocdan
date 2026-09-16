@@ -35,7 +35,9 @@ Mảng **trường độ** — vốn là chỗ trống lớn nhất khi viết b
 | Chơi bằng bàn phím máy tính, nhãn ARIA | ✅ T16 |
 | Dùng được trên điện thoại | ✅ T17 |
 
-**Toàn bộ T1–T21 đã xong**, và âm thanh đã được nghe thử trên trình duyệt (2026-09-16) — rủi ro treo lâu nhất của dự án đã dứt. Còn lại ghi ở mục "Việc chưa kiểm chứng" cuối file.
+**Toàn bộ T1–T24 đã xong**, và âm thanh đã được nghe thử trên trình duyệt (2026-09-16) — rủi ro treo lâu nhất của dự án đã dứt.
+
+Giai đoạn 5 (T22–T24) trả lời câu hỏi "trang đã đủ cho người tự học đàn organ tại nhà chưa?": nay trang **chấm được việc người học bấm**, có **khuông kép và bài hai tay**, và có **điệu đệm, chọn tiếng, bấm hợp âm một ngón** — tức phần đặc thù organ. Còn lại ghi ở mục "Việc chưa kiểm chứng" cuối file.
 
 ## Chạy kiểm thử
 
@@ -317,7 +319,7 @@ Bằng chứng là cần thiết: ngay khi đưa vào repo, **103 trên 269 muta
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **665 phép kiểm tra**, kiểm chứng bằng **269 phép phá có chủ đích** trên 17 bộ, chạy bằng `node tools/break/all.js`.
+Tổng cộng: **834 phép kiểm tra**, kiểm chứng bằng **347 phép phá có chủ đích** trên 20 bộ, chạy bằng `node tools/break/all.js`.
 
 ## Giai đoạn 5 — Từ tài liệu thành người dạy
 
@@ -353,6 +355,20 @@ Thêm 36 phép kiểm tra, kiểm chứng bằng 23 phép phá — bắt đượ
 - "Các nốt cách đều nhau" **đúng cả khi mọi nốt chồng lên một chỗ** (mọi khoảng cách đều bằng 0). Thêm phép đòi nốt phải tiến sang phải.
 - Mọi phím đều có mặt ở cả hai khoá, nên **đọc tay trái bằng khoá Sol** vẫn vẽ ra nốt — chỉ là sai dòng, và không gì kêu. Nay chốt đúng độ cao của một nốt đã biết.
 - Đổi hợp âm F thành G thì **cả hai vế của phép kiểm tra cùng đổi**, nên không bắt được. Nay kiểm bằng nhạc lý: mọi nốt giai điệu phải là nốt của hợp âm đang đỡ nó — hoà thanh sai thì lộ ngay.
+
+### T24 · Chơi theo kiểu đàn organ — ✅ XONG
+Trang tên là "Tự Học Đàn Organ" nhưng mọi thứ trước mục này là keyboard/piano chung chung. Với organ phổ thông ở Việt Nam, cách chơi thật là **bật điệu, tay trái gọi tên hợp âm, tay phải đánh giai điệu**.
+
+**Chọn tiếng** — Organ, Piano, Dàn dây, Sáo. Mỗi tiếng là một **dạng sóng cộng một đường bao ADSR riêng**, vẫn một oscillator cho một nốt. Nói thẳng giới hạn: đàn organ thật là nhiều hoạ âm chồng lên nhau (drawbar), còn đây thì không — chỉ đủ để phân biệt bốn tiếng, và giữ nguyên "một nốt một oscillator" mà mọi thứ phía sau đều dựa vào. `ENVELOPE` cố định của T7 nay là code chết, đã xoá.
+
+**Điệu đệm** — Ballad 76, Bolero 88, Disco 120. Mỗi điệu là **một ô nhịp** viết theo độ lệch phách. Trống dựng bằng oscillator chứ không dùng noise buffer: trống cái là cao độ rơi nhanh, trống con là tiếng rè ngắn, hi-hat là tiếng tách rất ngắn ở tần số cao. Phần bass **gọi tên nốt của hợp âm** (gốc, quãng năm) chứ không ghi cao độ cụ thể — nhờ vậy một điệu chơi được trên mọi hợp âm mà không phải viết lại. Lập lịch từng ô nhịp theo kiểu nhìn trước giống máy gõ nhịp.
+
+**Bấm hợp âm một ngón** — bật điệu rồi bấm **một phím trắng dưới Đô 4** là đổi hợp âm đệm. Sáu phím Đô Rê Mi Fa Sol La ứng với C Dm Em F G Am. **Phím Si để trống**: trong giọng Đô trưởng nó muốn hợp âm giảm, không nằm trong bảy hợp âm trang này dạy — nên nói thẳng là không có, chứ không bẻ thành thứ khác.
+
+Thêm 82 phép kiểm tra, kiểm chứng bằng 31 phép phá — bắt được cả 31. **Ba phép lọt lúc đầu, cả ba vì cảnh dựng test vô tình đã thoả điều kiện:**
+- "Chọn điệu thì lấy luôn tốc độ của nó" — `player.bpm` sẵn đang là 120 từ mục trước, đúng bằng tốc độ Disco, nên phép kiểm tra đỗ dù có lấy hay không. Nay đặt về 55 trước.
+- "Ô nhịp đầu không lập lịch vào quá khứ" — kiểm `nextBarTime` chẳng nói gì về ô nhịp **đã** đặt xuống. Nay soi thẳng thời điểm từng tiếng.
+- "Tắt chế độ một ngón" và "tắt điệu" hoá ra là **cùng một phép thử hai lần**, vì lúc đó điệu vốn đã tắt sẵn.
 
 ## Việc chưa kiểm chứng
 

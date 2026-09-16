@@ -165,10 +165,10 @@ let masterGain = null;        // single output stage - see ensureAudio()
 let masterLimiter = null;
 const activeVoices = new Map();   // voice id -> the note currently sounding on it
 
-// One oscillator per note shaped by a plain ADSR. The peak is deliberately
-// low: a four-note chord at the old flat 0.3 summed past full scale and came
-// out as a buzz, so every voice now goes through a shared limiter instead.
-const ENVELOPE = { attack: 0.012, decay: 0.16, sustain: 0.55, release: 0.32 };
+// One oscillator per note shaped by an ADSR, which T24 moved into the voice
+// table so each sound has its own. The peak is deliberately low: a four-note
+// chord at the old flat 0.3 summed past full scale and came out as a buzz, so
+// every voice goes through a shared limiter instead.
 const VOICE_PEAK = 0.22;
 const SILENT = 0.0001;        // exponential ramps cannot reach zero
 let quizScore = 0;
@@ -747,10 +747,12 @@ function playTone(freq, opts = {}) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'triangle'; // Rich organ sound
+    // The chosen voice supplies both the waveform and the envelope.
+    const timbre = VOICES[currentVoice] || VOICES.organ;
+    osc.type = timbre.wave;
     osc.frequency.setValueAtTime(freq, at);
 
-    const { attack, decay, sustain, release } = ENVELOPE;
+    const { attack, decay, sustain, release } = timbre;
     const sustainLevel = Math.max(VOICE_PEAK * sustain, SILENT);
     const releaseAt = at + Math.max(hold, attack + decay);
     const endAt = releaseAt + release;
@@ -1803,6 +1805,246 @@ function handleComputerKeyDown(event) {
   return true;
 }
 
+/* ---- Playing it like an organ, not like a piano ---------------------------
+ * Everything above this point is keyboard music in general. This part is what
+ * makes the instrument an organ: a choice of sound, an automatic
+ * accompaniment, and a left hand that names chords for the accompaniment to
+ * play rather than playing them itself. That is how these instruments are
+ * actually used.
+ */
+
+/* Voices. One oscillator per note, so a voice is a waveform plus an envelope
+ * rather than additive synthesis - a real drawbar organ is several harmonics
+ * stacked, and this is not that. It is enough to tell four sounds apart, and
+ * it keeps one note to one oscillator, which everything downstream relies on.
+ */
+const VOICES = {
+  organ:   { label: 'Organ',    wave: 'sine',     attack: 0.012, decay: 0.05, sustain: 0.92, release: 0.14 },
+  piano:   { label: 'Piano',    wave: 'triangle', attack: 0.004, decay: 0.28, sustain: 0.22, release: 0.35 },
+  strings: { label: 'Dàn dây',  wave: 'sawtooth', attack: 0.16,  decay: 0.20, sustain: 0.80, release: 0.45 },
+  flute:   { label: 'Sáo',      wave: 'sine',     attack: 0.07,  decay: 0.10, sustain: 0.88, release: 0.22 },
+};
+let currentVoice = 'organ';
+
+function setVoice(name) {
+  if (!VOICES[name]) {
+    console.error(`setVoice: there is no voice called "${name}".`);
+    return false;
+  }
+  currentVoice = name;
+  for (const id of Object.keys(VOICES)) {
+    const btn = document.getElementById(`voice-btn-${id}`);
+    if (btn) {
+      btn.className = id === name
+        ? 'px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold shadow-sm transition-all'
+        : 'px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-all';
+    }
+  }
+  return true;
+}
+
+/* Drums, made from oscillators rather than noise buffers: a kick is a pitch
+ * falling fast, a snare a short buzz, a hat a very short click up high. */
+const DRUMS = {
+  kick:  { wave: 'sine',   from: 140,  to: 45,   fall: 0.08, peak: 0.32, decay: 0.26 },
+  snare: { wave: 'square', from: 190,  to: 110,  fall: 0.05, peak: 0.11, decay: 0.16 },
+  hat:   { wave: 'square', from: 9000, to: 6200, fall: 0.02, peak: 0.045, decay: 0.05 },
+};
+
+function scheduleDrum(kind, at) {
+  const spec = DRUMS[kind];
+  if (!spec) {
+    console.error(`scheduleDrum: there is no drum called "${kind}".`);
+    return false;
+  }
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = spec.wave;
+  osc.frequency.setValueAtTime(spec.from, at);
+  osc.frequency.exponentialRampToValueAtTime(spec.to, at + spec.fall);
+
+  gain.gain.setValueAtTime(SILENT, at);
+  gain.gain.exponentialRampToValueAtTime(spec.peak, at + 0.002);
+  gain.gain.exponentialRampToValueAtTime(SILENT, at + spec.decay);
+
+  osc.connect(gain);
+  gain.connect(masterLimiter);
+  osc.start(at);
+  osc.stop(at + spec.decay + 0.02);
+  return true;
+}
+
+/* Styles. Each is one bar, written as offsets in beats from the start of it.
+ * `bass` names a note of the chord rather than a pitch, so a style plays over
+ * any chord without being rewritten.
+ */
+const STYLES = {
+  ballad: {
+    label: 'Ballad', bpm: 76, beats: 4,
+    drums: [[0, 'kick'], [1, 'snare'], [2, 'kick'], [3, 'snare'],
+            [0, 'hat'], [0.5, 'hat'], [1, 'hat'], [1.5, 'hat'], [2, 'hat'], [2.5, 'hat'], [3, 'hat'], [3.5, 'hat']],
+    bass: [[0, 0], [2, 2]],
+    chords: [[1, 0.8], [3, 0.8]],
+  },
+  bolero: {
+    label: 'Bolero', bpm: 88, beats: 4,
+    drums: [[0, 'kick'], [1, 'snare'], [2.5, 'kick'], [3, 'snare'],
+            [0, 'hat'], [1, 'hat'], [2, 'hat'], [3, 'hat']],
+    bass: [[0, 0], [1.5, 2], [2.5, 0]],
+    chords: [[1, 0.8], [3, 0.8]],
+  },
+  disco: {
+    label: 'Disco', bpm: 120, beats: 4,
+    drums: [[0, 'kick'], [1, 'kick'], [2, 'kick'], [3, 'kick'], [1, 'snare'], [3, 'snare'],
+            [0.5, 'hat'], [1.5, 'hat'], [2.5, 'hat'], [3.5, 'hat']],
+    bass: [[0, 0], [1, 2], [2, 0], [3, 2]],
+    chords: [[0.5, 0.4], [1.5, 0.4], [2.5, 0.4], [3.5, 0.4]],
+  },
+};
+
+const accompaniment = { running: false, styleId: 'ballad', chord: 'C', nextBarTime: 0, timer: null, bars: 0 };
+
+function lowerOctave(key) {
+  const cut = key.lastIndexOf('/');
+  return `${key.slice(0, cut)}/${Number(key.slice(cut + 1)) - 1}`;
+}
+
+function setStyle(styleId) {
+  if (!STYLES[styleId]) {
+    console.error(`setStyle: there is no style called "${styleId}".`);
+    return false;
+  }
+  accompaniment.styleId = styleId;
+  setPlaybackBpm(STYLES[styleId].bpm);
+  for (const id of Object.keys(STYLES)) {
+    const btn = document.getElementById(`style-btn-${id}`);
+    if (btn) {
+      btn.className = id === styleId
+        ? 'px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold shadow-sm transition-all'
+        : 'px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-all';
+    }
+  }
+  return true;
+}
+
+function setAccompanimentChord(chordId) {
+  if (!CHORDS[chordId]) {
+    console.error(`setAccompanimentChord: there is no chord called "${chordId}".`);
+    return false;
+  }
+  accompaniment.chord = chordId;
+  const label = document.getElementById('accomp-chord');
+  if (label) label.innerText = `${chordId} — ${CHORDS[chordId].label}`;
+  return true;
+}
+
+// One bar of the current style over the chord as it stands right now.
+function scheduleAccompanimentBar(at) {
+  const style = STYLES[accompaniment.styleId];
+  const notes = chordVoicing(accompaniment.chord, 0);
+  if (!notes) return false;
+  const secPerBeat = 60 / player.bpm;
+
+  for (const [beat, kind] of style.drums) scheduleDrum(kind, at + beat * secPerBeat);
+
+  for (const [beat, which] of style.bass) {
+    const key = lowerOctave(notes[Math.min(which, notes.length - 1)]);
+    const note = notesData.bass.find(n => n.key === key);
+    if (note) playTone(note.freq, { at: at + beat * secPerBeat, hold: secPerBeat * 0.8, voice: `accomp-bass-${beat}` });
+  }
+
+  for (const [beat, hold] of style.chords) {
+    for (const key of notes) {
+      const note = notesData.bass.find(n => n.key === key);
+      if (note) playTone(note.freq, { at: at + beat * secPerBeat, hold: secPerBeat * hold, voice: `accomp-chord-${beat}-${key}` });
+    }
+  }
+  accompaniment.bars++;
+  return true;
+}
+
+function accompanimentScheduler() {
+  if (!accompaniment.running) return;
+  const ctx = ensureAudio();
+  const style = STYLES[accompaniment.styleId];
+  const barLength = style.beats * (60 / player.bpm);
+  while (accompaniment.nextBarTime < ctx.currentTime + SCHEDULE_AHEAD) {
+    scheduleAccompanimentBar(accompaniment.nextBarTime);
+    accompaniment.nextBarTime += barLength;
+  }
+}
+
+function startAccompaniment() {
+  if (accompaniment.running) return false;
+  const ctx = ensureAudio();
+  accompaniment.running = true;
+  accompaniment.bars = 0;
+  accompaniment.nextBarTime = ctx.currentTime + 0.1;
+  accompanimentScheduler();
+  accompaniment.timer = setInterval(accompanimentScheduler, LOOKAHEAD_MS);
+  const btn = document.getElementById('accomp-toggle');
+  if (btn) btn.innerText = 'Tắt điệu';
+  return true;
+}
+
+function stopAccompaniment() {
+  if (accompaniment.timer !== null) clearInterval(accompaniment.timer);
+  accompaniment.timer = null;
+  accompaniment.running = false;
+  const btn = document.getElementById('accomp-toggle');
+  if (btn) btn.innerText = 'Bật điệu';
+  return true;
+}
+
+function toggleAccompaniment() {
+  if (accompaniment.running) stopAccompaniment(); else startAccompaniment();
+}
+
+/* Single-finger chords. On a real organ the left hand names the chord and the
+ * instrument plays it; you do not hold the whole triad down. Here, with the
+ * accompaniment running, one white key below the split sets the chord.
+ *
+ * The seven white keys do not all carry a chord: B in C major wants a
+ * diminished triad, which is not one of the seven a beginner is given, so it
+ * is left unmapped and says so rather than being bent into something else.
+ */
+const SINGLE_FINGER_CHORDS = { c: 'C', d: 'Dm', e: 'Em', f: 'F', g: 'G', a: 'Am' };
+const ACCOMP_SPLIT_OCTAVE = 4;      // keys below C4 belong to the left hand
+let singleFingerMode = false;
+
+function setSingleFingerMode(on) {
+  singleFingerMode = Boolean(on);
+  return singleFingerMode;
+}
+
+const isLeftHandKey = (key) => {
+  const parsed = parseKey(key);
+  return Boolean(parsed) && parsed.octave < ACCOMP_SPLIT_OCTAVE;
+};
+
+// Returns the chord a key names, or null if that key names none.
+function singleFingerChord(key) {
+  const parsed = parseKey(key);
+  if (!parsed || parsed.sharp) return null;
+  return SINGLE_FINGER_CHORDS[parsed.letter] || null;
+}
+
+/* Called for every key press. Returns the chord it selected, or null when the
+ * press was an ordinary note. */
+function handleSingleFinger(key) {
+  if (!singleFingerMode || !accompaniment.running) return null;
+  if (!isLeftHandKey(key)) return null;
+  const chordId = singleFingerChord(key);
+  if (!chordId) {
+    console.error(`handleSingleFinger: "${key}" does not name one of the chords this page teaches.`);
+    return null;
+  }
+  setAccompanimentChord(chordId);
+  return chordId;
+}
+
 /* ---- The grand staff -----------------------------------------------------
  * Two staves joined by a brace, treble above bass, the way piano and organ
  * music is written. The one thing that makes this different from drawing two
@@ -2265,6 +2507,30 @@ function startPracticeSource(id) {
   });
 }
 
+function buildOrganControls() {
+  const voices = document.getElementById('voice-buttons');
+  if (voices) {
+    voices.innerHTML = Object.entries(VOICES).map(([id, v]) =>
+      `<button id="voice-btn-${id}" onclick="setVoice('${id}')" class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-all">${v.label}</button>`
+    ).join('');
+  }
+  const styles = document.getElementById('style-buttons');
+  if (styles) {
+    styles.innerHTML = Object.entries(STYLES).map(([id, st]) =>
+      `<button id="style-btn-${id}" onclick="setStyle('${id}')" class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-all">${st.label} · ${st.bpm} BPM</button>`
+    ).join('');
+  }
+  const chords = document.getElementById('accomp-chords');
+  if (chords) {
+    chords.innerHTML = Object.keys(CHORDS).map(id =>
+      `<button onclick="setAccompanimentChord('${id}')" class="chord-btn">${id}</button>`
+    ).join('');
+  }
+  setVoice(currentVoice);
+  setStyle(accompaniment.styleId);
+  setAccompanimentChord(accompaniment.chord);
+}
+
 function buildPracticeSources() {
   const row = document.getElementById('practice-sources');
   if (!row) return;
@@ -2710,6 +2976,9 @@ function handleKeyClick(key) {
     playTone(match.freq, { voice: key });
     highlightKey(key);
   }
+  // On an organ the left hand names the chord for the accompaniment.
+  handleSingleFinger(key);
+
   // Every press is judged, whether it came from the mouse or the keyboard.
   gradeKeyPress(key);
 }
@@ -2922,6 +3191,7 @@ window.onload = function() {
   buildBeatLights();
   buildIntervalButtons();
   buildPracticeSources();
+  buildOrganControls();
   showTwoHandPiece('anh-sao-nho-2-tay');
   renderPractice();
   renderEarTraining();

@@ -56,7 +56,7 @@ const MUTATIONS = [
   ['every note is marked, so none of them is',
    p => p.replace('    i === practice.index ? { ...item, highlight: true } : item);', '    ({ ...item, highlight: true }));')],
   ['the highlight is drawn in the same ink as everything else',
-   p => p.replace("      const headInk = item.highlight ? '#2563eb' : '#0f172a';", "      const headInk = '#0f172a';")],
+   p => p.replace("    const headInk = item.highlight ? '#2563eb' : '#0f172a';", "    const headInk = '#0f172a';")],
   ['a source is practised in the wrong meter',
    p => p.replace('  practice.timeSig = opts.timeSig || null;', "  practice.timeSig = '3/4';")],
   ['a source that does not exist is accepted',
