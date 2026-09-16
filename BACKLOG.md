@@ -17,7 +17,7 @@ Trang chạy tại https://thawngscof.github.io/tuhocdan/
 - Tab mẹo đọc nhanh (nốt cột mốc, F-A-C-E, dòng/khe)
 - Game phản xạ nhận diện nốt, 3 phạm vi (cơ bản / toàn bộ / nốt thăng)
 
-Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ** vắng mặt:
+Mảng **trường độ** — vốn là chỗ trống lớn nhất khi viết backlog này — nay đã xong cả:
 
 | Khái niệm | Trạng thái |
 |---|---|
@@ -27,20 +27,30 @@ Chưa có — app mới dạy **cao độ**, toàn bộ mảng **trường độ
 | Tiết tấu, máy gõ nhịp | ✅ T5 + T6 |
 | Hợp âm tay trái | ✅ T8 |
 | Gam, ngón bấm | ✅ T4 + T9 |
-| Bài hát tập chơi | ✅ T10 (4 bài, thiếu dân ca Việt) |
+| Bài hát tập chơi | ✅ T10 (4 bài — xem phần còn thiếu ở T10) |
 | Lộ trình bài học có thứ tự | ✅ T11 |
+| Nốt chấm dôi, dấu nối | ✅ T15 |
+| Dấu giáng, hoá biểu | ✅ T14 |
+| Quãng, luyện tai | ✅ T12 + T13 |
+| Chơi bằng bàn phím máy tính, nhãn ARIA | ✅ T16 |
+| Dùng được trên điện thoại | ✅ T17 |
+
+**Toàn bộ T1–T21 đã xong.** Còn lại đúng hai việc, đều ghi rõ bên dưới: bốn bài hát đều là giai điệu châu Âu (T10), và âm thanh chưa ai nghe thử trên trình duyệt.
 
 ## Chạy kiểm thử
 
 ```
-node tools/verify.js
+node tools/verify.js        # nhanh — chạy sau mỗi lần sửa
+node tools/break/all.js     # chậm — chạy sau khi xong một tính năng
 ```
 
-Chỉ cần Node, không cài gì thêm. **Bắt buộc chạy sau mỗi thay đổi `renderScoreSVG` hoặc dữ liệu nốt** — T1–T4 đều sửa renderer.
+Chỉ cần Node, không cài gì thêm.
+
+`verify.js` là bộ kiểm tra. `tools/break/` cố tình làm hỏng code theo 269 cách và đòi bộ kiểm tra **phải bắt được từng cái** — một phép kiểm tra sống sót qua chính phép phá dành cho nó thì không kiểm tra điều gì cả. Nó chạy lại toàn bộ bộ kiểm tra cho mỗi mutation nên chậm hơn nhiều.
 
 ## Nguyên tắc kỹ thuật
 
-- Giữ **một file `index.html` tự chứa**, không build step — deploy thẳng lên GitHub Pages
+- Không build step — deploy thẳng lên GitHub Pages. (Nguyên tắc cũ là "một file `index.html` tự chứa"; T19 tách thành `index.html` + `styles.css` + `app.js` khi vượt ngưỡng 150KB mà chính nó đặt ra. Phần "không build step" giữ nguyên.)
 - Phụ thuộc ngoài chỉ có Tailwind CDN + Inter font, không thêm thư viện nhạc
 - Toàn bộ nội dung tiếng Việt, thuật ngữ nhạc lý theo cách gọi phổ thông ở VN
 - Mỗi thay đổi renderer phải verify headless được (xem `T20`)
@@ -311,4 +321,15 @@ Tổng cộng: **665 phép kiểm tra**, kiểm chứng bằng **269 phép phá 
 
 ## Việc chưa kiểm chứng
 
-- **Âm thanh chưa test thật trên trình duyệt.** Extension Chrome treo lúc kiểm tra. `playTone` có gọi `audioCtx.resume()` khi bị suspend, nhưng cần xác nhận tiếng thực sự phát ra sau cú click đầu tiên.
+### Âm thanh chưa ai nghe thử — rủi ro lớn nhất còn lại
+Ghi từ đầu backlog và **vẫn còn nguyên**. Trong khi đó đã có **năm** tính năng dựng lên trên nền này: động cơ ADSR (T7), máy gõ nhịp (T5), bộ phát câu nhạc (T6), hợp âm (T8), luyện tai (T12).
+
+Bộ kiểm tra dựng một `AudioContext` giả và chứng minh được **hình dạng đồ thị và lịch phát**: không gì nối thẳng vào loa, đường bao lên xuống đúng thứ tự, thời điểm lấy từ `AudioContext.currentTime`, không oscillator nào bị bỏ quên. Nó **không** chứng minh được có tiếng kêu.
+
+Cần một người mở trang, bấm vài phím, bấm "Phát" — một phút là dứt điểm. Tôi không có công cụ điều khiển trình duyệt ở môi trường này.
+
+### Bài hát Việt Nam
+Xem phần "Còn thiếu" ở T10: **Lý Cây Xanh** và **Bắc Kim Thang** thuộc phạm vi công cộng và nên có mặt, nhưng tôi không đủ chắc về cao độ từng nốt, mà mã hoá sai giai điệu thì tệ hơn là thiếu bài.
+
+### Giao diện chưa ai nhìn
+Cũng như âm thanh: bố cục, màu, khoảng cách của những thẻ mới thêm đều chỉ được kiểm bằng cách đọc markup. Riêng bàn phím trên màn hình hẹp thì có tính ra số (346px lọt màn 360px), còn lại thì chưa ai nhìn tận mắt.
