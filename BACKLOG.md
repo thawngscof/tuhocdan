@@ -256,8 +256,18 @@ Giữ phím không gõ lại nốt (`event.repeat`), phím tắt trình duyệt 
 
 Thêm 34 phép kiểm tra, kiểm chứng bằng 16 phép phá — bắt được cả 16. Phép kiểm tra đối chiếu bố cục với **chính cây đàn nó mô phỏng**: hàng giữa phải leo đúng thứ tự phím trắng, và phím nào là phím đen thì suy từ việc nốt đó có dấu thăng hay không, chứ không tin nhãn `colour` trong bảng. Một phép lọt lúc đầu vì chốt chặn "phím ngoài bàn đàn" không với tới được qua giao diện (quãng tám đã bị khoá 2–5) — nhưng hàm vẫn nhận quãng tám bất kỳ từ người gọi, nên nay kiểm đúng hợp đồng đó.
 
-### T17 · Bàn phím đàn trên màn hình nhỏ
-29 phím trắng × 44px + 32px padding = 1308px (phím đen định vị absolute nên không cộng bề ngang), hiện phải cuộn ngang trên điện thoại. Cân nhắc thu nhỏ hoặc chế độ 2 quãng tám.
+### T17 · Bàn phím đàn trên màn hình nhỏ — ✅ XONG
+Làm **cả hai** cách đã cân nhắc, vì một mình không cách nào đủ.
+
+**Vị trí phím đen nay suy ra, không lưu cứng.** Trước đó mỗi phím đen mang một số pixel (`pos: 28`, `pos: 72`, …) chỉ đúng với đúng một bề rộng phím và đúng một độ dài bàn phím. Nay tính bằng số phím trắng đứng trước nó *trong phần đang hiện*, đặt qua `calc(var(--white-key-w) * n)`. Đã đối chiếu: cả **20 phím đen** rơi đúng chỗ cũ, không lệch một pixel. 20 số pixel trong dữ liệu đã xoá.
+
+**Chế độ 2 quãng tám** (C3–C5, 25 phím / 15 phím trắng) bên cạnh chế độ toàn bộ.
+
+**Thu nhỏ trên màn hình hẹp** (`max-width: 640px`): phím trắng 22px, phím đen 14px, vỏ đàn bớt padding, ẩn dòng tên nốt phụ.
+
+Ghép lại: 15 × 22 + 16 = **346px, lọt màn 360px không phải cuộn** — đúng điều mục này đặt ra. Lần đầu tôi để 30px, phép kiểm tra tính ra 450px và **bắt ngay**: vẫn phải cuộn, tức chưa giải quyết được gì.
+
+Thêm 26 phép kiểm tra, kiểm chứng bằng 14 phép phá — bắt được cả 14. Trong đó có phép chốt rằng **không còn số pixel nào nằm trong dữ liệu nốt**, vì vị trí suy ra và vị trí lưu sẵn để cạnh nhau thì sớm muộn cũng lệch.
 
 ## Nợ kỹ thuật
 
@@ -265,7 +275,7 @@ Thêm 34 phép kiểm tra, kiểm chứng bằng 16 phép phá — bắt đượ
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
 ### T19 · Cân nhắc tách file
-`index.html` đang 156KB / 3116 dòng và sẽ phình nhanh khi thêm bài học.
+`index.html` đang 159KB / 3181 dòng và sẽ phình nhanh khi thêm bài học.
 Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
@@ -279,7 +289,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **638 phép kiểm tra**, kiểm chứng bằng **255 phép phá có chủ đích** trên 16 bộ.
+Tổng cộng: **663 phép kiểm tra**, kiểm chứng bằng **269 phép phá có chủ đích** trên 17 bộ.
 
 ## Việc chưa kiểm chứng
 

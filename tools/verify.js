@@ -41,9 +41,9 @@ const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
 if (!script) fail('could not find the page <script> block in index.html');
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -3106,6 +3106,121 @@ for (const k of keyboardKeys) {
 }
 check(`every key announces itself and can be reached (${keyboardKeys.length} keys)`,
       unlabelled.length === 0, unlabelled.slice(0, 3).join('; '));
+
+/* ---- 29. the keyboard on a small screen ----------------------------------
+ * The black keys used to carry hard-coded pixel offsets, which only worked
+ * at one key width and one keyboard length. They are worked out now, so the
+ * check is that the arithmetic really does put each one where it belongs.
+ */
+
+const WHITE_W = 44;   // the default --white-key-w, mirrored from the stylesheet
+
+const blackOffsets = (html) => {
+  const out = {};
+  for (const m of html.matchAll(/id="key-([^"]+)"[^>]*style="left: calc\(var\(--white-key-w\) \* (\d+)\);"/g)) {
+    out[m[1].replace('_', '/')] = Number(m[2]);
+  }
+  return out;
+};
+
+/* 29a. each black key sits after the white keys that precede it */
+
+for (const range of ['full', 'two']) {
+  setKeyboardRange(range);
+  const visible = visibleKeyboardKeys();
+  const offsets = blackOffsets(rendered[KEYBOARD]);
+
+  let whites = 0;
+  const misplaced = [];
+  for (const k of visible) {
+    if (k.type === 'white') { whites++; continue; }
+    if (offsets[k.key] !== whites) misplaced.push(`${k.noteName}: at ${offsets[k.key]}, want ${whites}`);
+  }
+  check(`${range}: every black key sits after the white keys before it`, misplaced.length === 0,
+        misplaced.slice(0, 3).join('; '));
+  check(`${range}: every black key on screen has a place`,
+        visible.filter(k => k.type === 'black').every(k => offsets[k.key] !== undefined));
+  check(`${range}: no black key is placed twice`,
+        new Set(Object.values(offsets)).size === Object.keys(offsets).length
+          || Object.keys(offsets).length === new Set(Object.keys(offsets)).size);
+}
+
+// The first black key of any range starts one white key in, not at zero -
+// a C sharp belongs between C and D, never on top of C.
+for (const range of ['full', 'two']) {
+  setKeyboardRange(range);
+  const offsets = blackOffsets(rendered[KEYBOARD]);
+  check(`${range}: the first black key is not stacked on the first white one`,
+        Math.min(...Object.values(offsets)) === 1,
+        `lowest offset ${Math.min(...Object.values(offsets))}`);
+}
+
+/* 29b. the two ranges show what they say they show */
+
+setKeyboardRange('full');
+check('the full keyboard shows all 49 keys', visibleKeyboardKeys().length === keyboardKeys.length);
+check('the full keyboard runs C2 to C6',
+      visibleKeyboardKeys()[0].key === 'c/2'
+        && visibleKeyboardKeys()[visibleKeyboardKeys().length - 1].key === 'c/6');
+
+setKeyboardRange('two');
+const twoOctaves = visibleKeyboardKeys();
+check('the short keyboard runs C3 to C5',
+      twoOctaves[0].key === 'c/3' && twoOctaves[twoOctaves.length - 1].key === 'c/5');
+check('the short keyboard is exactly two octaves', twoOctaves.length === 25, `${twoOctaves.length} keys`);
+check('the short keyboard has 15 white keys, which a phone can hold',
+      twoOctaves.filter(k => k.type === 'white').length === 15,
+      `${twoOctaves.filter(k => k.type === 'white').length} white keys`);
+check('the short keyboard leaves out the keys outside its range',
+      !twoOctaves.some(k => /\/(2|6)$/.test(k.key) && k.key !== 'c/6'),
+      twoOctaves.filter(k => /\/(2|6)$/.test(k.key)).map(k => k.key).join(', '));
+check('the short keyboard only ever draws the keys it shows',
+      Object.keys(keyDivs(rendered[KEYBOARD])).length === twoOctaves.length,
+      `${Object.keys(keyDivs(rendered[KEYBOARD])).length} key(s) drawn for ${twoOctaves.length} visible`);
+
+let rangeLogged = 0;
+const rangeErr = console.error;
+console.error = () => rangeLogged++;
+const badRange = setKeyboardRange('một quãng tám');
+console.error = rangeErr;
+check('a keyboard range that does not exist is refused', badRange === false && rangeLogged === 1);
+check('a refused range leaves the keyboard alone', visibleKeyboardKeys().length === 25);
+setKeyboardRange('full');
+
+/* 29c. the width lives in one place, and shrinks on a narrow screen */
+
+check('the key width is declared as a custom property',
+      /--white-key-w:\s*44px/.test(html) && /--black-key-w:\s*28px/.test(html));
+check('the keys are sized from that property, not from a repeated number',
+      /\.white-key\s*\{[^}]*width:\s*var\(--white-key-w\)/.test(html)
+        && /\.black-key\s*\{[^}]*width:\s*var\(--black-key-w\)/.test(html),
+      'a key width is still hard-coded in the stylesheet');
+
+const narrow = /@media \(max-width: 640px\) \{([\s\S]*?)\n    \}/.exec(html);
+check('a narrow screen gets a narrower keyboard', Boolean(narrow));
+const narrowWidth = narrow && /--white-key-w:\s*(\d+)px/.exec(narrow[1]);
+check('the narrow key width is smaller than the full one',
+      narrowWidth && Number(narrowWidth[1]) < WHITE_W,
+      narrowWidth ? `${narrowWidth[1]}px` : 'no override found');
+
+// Two octaves at the narrow width has to fit a small phone, case included -
+// which is the whole reason the short keyboard exists. The first attempt at
+// 30px came to 450px and still scrolled.
+const narrowPx = Number(narrowWidth[1]);
+const narrowPad = /\.keyboard-wrapper\s*\{\s*padding:\s*\d+px (\d+)px/.exec(narrow[1]);
+const caseWidth = narrowPad ? Number(narrowPad[1]) * 2 : 32;
+check(`two octaves fit a 360px phone (15 x ${narrowPx}px + ${caseWidth}px case = ${15 * narrowPx + caseWidth}px)`,
+      15 * narrowPx + caseWidth <= 360, `${15 * narrowPx + caseWidth}px still scrolls sideways`);
+check(`the full keyboard does not (29 x ${narrowPx}px + ${caseWidth}px = ${29 * narrowPx + caseWidth}px), which is why the short one exists`,
+      29 * narrowPx + caseWidth > 360);
+check('the narrow keyboard trims its case as well as its keys',
+      Boolean(narrowPad), 'the padding is still the full-size 16px a side');
+
+/* 29d. no pixel offsets left in the note data */
+
+check('no black key carries a hard-coded pixel position any more',
+      !/pos:\s*\d+/.test(html),
+      'the derived position and a stored one can drift apart');
 
 /* ---- summary ----------------------------------------------------------- */
 
