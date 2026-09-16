@@ -338,6 +338,22 @@ Thêm 38 phép kiểm tra, kiểm chứng bằng 24 phép phá — bắt đượ
 - Hai điều kiện trong `gradeKeyPress` hoá ra **chết hoàn toàn** — `practiceExpected()` đã chặn sẵn cả hai trường hợp. Đã xoá thay vì viết test cho chúng.
 - Không phép nào kiểm **việc nối dây**: động cơ chấm điểm chạy đúng nhưng chẳng ai kiểm nó có được gọi khi bấm phím thật hay không. Nay kiểm cả hai đường vào.
 
+### T23 · Khuông kép và bài hai tay — ✅ XONG
+Bài 10 dạy ghép hai tay nhưng **không có tài liệu nào để tập**: cả 4 bài đều khoá Sol, không có khuông kép, không bài nào ghép giai điệu với hợp âm.
+
+**Tách `drawStaffItem` ra khỏi `renderScoreSVG`** để khuông thứ hai dùng lại được cùng đoạn code vẽ nốt. Đây là ca mổ lớn nhất từ đầu dự án — ảnh chụp **1486 lượt vẽ** làm trọng tài, và không đổi một byte. (Lần nữa lại vấp đúng cái bẫy của T19: lệnh bỏ thụt lề cắt luôn khoảng trắng bên trong template in ra SVG; ảnh chụp bắt được.)
+
+Điểm khác biệt thật giữa khuông kép và "hai khuông xếp chồng" là nốt phải **thẳng hàng theo thời gian**. Nên `renderGrandStaff` đặt vị trí theo **phách cộng dồn**, không theo chỉ số như `renderScoreSVG`: tám nốt móc đơn tay phải và một nốt tròn tay trái phủ đúng cùng một khoảng. Vạch nhịp chạy xuyên cả hai khuông; dấu ngoặc ôm nói đây là một nhạc cụ hai tay. Hai tay dài ngắn khác nhau thì **báo cảnh báo** chứ không lặng lẽ vẽ bừa.
+
+Bài "Ánh Sao Nhỏ — hai tay": **tay trái viết bằng tên hợp âm**, nốt lấy từ `CHORDS` qua `chordVoicing` — hợp âm chỉ được viết ra ở đúng một chỗ trong dự án, và T8 đã đối chiếu chỗ đó với nhạc lý rồi.
+
+Tập hai tay dùng lại y nguyên phần chấm điểm của T22: mọi nốt **khởi đầu cùng một thời điểm** gộp thành một "hợp âm" phải bấm đủ — mà T22 vốn đã biết chờ hợp âm.
+
+Thêm 36 phép kiểm tra, kiểm chứng bằng 23 phép phá — bắt được cả 23. **Năm phép lọt lúc đầu**, ba do phép kiểm tra quá lỏng và hai do mutation tôi viết không phá gì thật:
+- "Các nốt cách đều nhau" **đúng cả khi mọi nốt chồng lên một chỗ** (mọi khoảng cách đều bằng 0). Thêm phép đòi nốt phải tiến sang phải.
+- Mọi phím đều có mặt ở cả hai khoá, nên **đọc tay trái bằng khoá Sol** vẫn vẽ ra nốt — chỉ là sai dòng, và không gì kêu. Nay chốt đúng độ cao của một nốt đã biết.
+- Đổi hợp âm F thành G thì **cả hai vế của phép kiểm tra cùng đổi**, nên không bắt được. Nay kiểm bằng nhạc lý: mọi nốt giai điệu phải là nốt của hợp âm đang đỡ nó — hoà thanh sai thì lộ ngay.
+
 ## Việc chưa kiểm chứng
 
 ### ~~Âm thanh chưa ai nghe thử~~ — ✅ ĐÃ NGHE (2026-09-16)

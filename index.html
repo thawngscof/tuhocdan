@@ -223,6 +223,28 @@
       </div>
 
 
+
+      <!-- Two hands -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Ghép Hai Tay</h2>
+            <p class="text-sm text-slate-500">Khuông kép: tay phải đánh giai điệu ở khoá Sol, tay trái bấm hợp âm ở khoá Fa. Hai khuông thẳng hàng theo phách.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="playTwoHands('anh-sao-nho-2-tay')"
+                    class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm hover:bg-blue-700 transition-all">Nghe hai tay</button>
+            <button onclick="startPracticeSource('two-anh-sao-nho-2-tay')"
+                    class="px-4 py-2 rounded-lg bg-slate-800 text-white font-bold shadow-sm hover:bg-slate-900 transition-all">Tập bấm</button>
+          </div>
+        </div>
+
+        <div id="twohand-score" class="w-full overflow-x-auto bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-start items-center shadow-inner min-h-[300px] mb-2">
+          <!-- SVG injected in JS -->
+        </div>
+        <p id="twohand-origin" class="text-xs text-slate-500"></p>
+      </div>
+
       <!-- Practice with grading -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">

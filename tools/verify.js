@@ -48,9 +48,9 @@ global.window = {};
 const script = [null, SCRIPT];      // kept in this shape so script[1] still reads
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -3381,7 +3381,7 @@ check('practising a source draws its bars without complaint',
         const said = [];
         const realWarn = console.warn;
         console.warn = (m) => said.push(m);
-        for (const s of sources) startPractice(s.items, { clef: s.clef, timeSig: s.timeSig });
+        for (const s of sources) startPractice(s.items, { clef: s.clef, timeSig: s.timeSig, parts: s.parts });
         console.warn = realWarn;
         return said.length === 0;
       })());
@@ -3392,7 +3392,7 @@ for (const source of sources) {
   const errs = [];
   practiceErr = console.error;
   console.error = (m) => errs.push(m);
-  const started = startPractice(source.items, { clef: source.clef, timeSig: source.timeSig, title: source.label });
+  const started = startPractice(source.items, { clef: source.clef, timeSig: source.timeSig, title: source.label, parts: source.parts });
   console.error = practiceErr;
   if (!started || errs.length) unplayableSources.push(`${source.label}: ${errs[0] || 'refused'}`);
 }
@@ -3410,7 +3410,7 @@ check('a source that does not exist is refused', noSource === false && practiceL
 /* 30e. a whole passage can be played through correctly */
 
 for (const source of sources) {
-  startPractice(source.items, { clef: source.clef });
+  startPractice(source.items, { clef: source.clef, parts: source.parts });
   let guard = 0, result = null;
   while (practiceExpected() && guard++ < 500) {
     for (const key of practiceExpected()) result = gradeKeyPress(key);
@@ -3438,6 +3438,224 @@ check('the tally is shown to the learner',
 stopPractice();
 check('stopping clears what the learner was being shown',
       practice.active === false && rendered['practice-score'] === '');
+
+/* ---- 31. the grand staff and two hands -----------------------------------
+ * What makes a grand staff different from two staves printed one above the
+ * other is that the notes line up in TIME. So that is what these check: a
+ * beat on one staff sits directly under the same beat on the other, however
+ * differently the two hands are divided up.
+ */
+
+// A whole note is drawn as a plain ellipse, not as the rotated group the
+// stemmed notes use, so matching only the group misses it entirely.
+const noteHeads = (svg) => {
+  const out = [];
+  for (const m of svg.matchAll(/translate\(([-\d.]+), ([-\d.]+)\) rotate/g)) out.push({ x: +m[1], y: +m[2] });
+  for (const m of svg.matchAll(/<ellipse cx="([-\d.]+)" cy="([-\d.]+)" rx="7"/g)) out.push({ x: +m[1], y: +m[2] });
+  return out;
+};
+
+const PIECE = TWO_HAND_PIECES[0];
+const PIECE_BASS = twoHandBass(PIECE);
+
+check('there is a piece written for two hands', TWO_HAND_PIECES.length >= 1);
+check('the left hand is written as chord names, not as note lists',
+      PIECE.bassChords.every(e => typeof e.chord === 'string' && CHORDS[e.chord]),
+      PIECE.bassChords.filter(e => !CHORDS[e.chord]).map(e => e.chord).join(', '));
+check('every left-hand chord comes out as real notes',
+      PIECE_BASS !== null && PIECE_BASS.every(b => b.keys.length >= 3));
+check('the left-hand notes are the chord they are named after',
+      PIECE.bassChords.every((e, i) => JSON.stringify(PIECE_BASS[i].keys) === JSON.stringify(CHORDS[e.chord].notes)),
+      'a chord in the piece has drifted from the chord table');
+check('the piece says where its melody came from',
+      /phạm vi công cộng/.test(PIECE.origin));
+
+/* Whether the accompaniment fits the tune is a musical fact, and comparing
+ * the piece's chord names to the piece's own chord notes cannot see it: swap
+ * F for G and both sides change together. In a beginner harmonisation like
+ * this one every melody note is a note of the chord underneath it, and that
+ * is checkable. */
+const chordPitches = (id) => CHORDS[id].notes.map(k => pitchOf(k).pc);
+const clashes = [];
+{
+  let chordBeat = 0, chordAt = [];
+  for (const entry of PIECE.bassChords) {
+    chordAt.push({ from: chordBeat, to: chordBeat + itemBeats(entry), chord: entry.chord });
+    chordBeat += itemBeats(entry);
+  }
+  let beat = 0;
+  for (const note of PIECE.treble) {
+    if (!note.rest) {
+      const under = chordAt.find(c => beat >= c.from - 1e-9 && beat < c.to - 1e-9);
+      if (!under) clashes.push(`beat ${beat}: no chord underneath`);
+      else if (!chordPitches(under.chord).includes(pitchOf(note.key).pc)) {
+        clashes.push(`beat ${beat}: ${note.key} over ${under.chord}`);
+      }
+    }
+    beat += itemBeats(note);
+  }
+}
+check('every melody note is a note of the chord underneath it', clashes.length === 0,
+      clashes.slice(0, 3).join('; '));
+
+/* 31a. the two hands last exactly as long as each other */
+
+check(`both hands are the same length (${partBeats(PIECE.treble)} beats)`,
+      Math.abs(partBeats(PIECE.treble) - partBeats(PIECE_BASS)) < 1e-9,
+      `right hand ${partBeats(PIECE.treble)}, left hand ${partBeats(PIECE_BASS)}`);
+check('the piece fills whole bars',
+      partBeats(PIECE.treble) % 4 === 0, `${partBeats(PIECE.treble)} beats of 4/4`);
+
+const mismatch = [];
+let grandWarn = console.warn;
+console.warn = (m) => mismatch.push(m);
+renderGrandStaff('probe', { treble: PIECE.treble, bass: PIECE_BASS }, 760, 300, PIECE.timeSig);
+console.warn = grandWarn;
+check('a matched pair of hands draws without complaint', mismatch.length === 0, mismatch.join('; '));
+
+const complained = [];
+console.warn = (m) => complained.push(m);
+renderGrandStaff('probe', { treble: [{ key: 'c/4' }], bass: [{ key: 'c/3', dur: 'w' }] }, 760, 300, '4/4');
+console.warn = grandWarn;
+check('hands of different lengths are reported', complained.length === 1,
+      'one hand running longer than the other went unmentioned');
+
+/* 31b. the staves line up by beat, not by note count */
+
+// A bar of four quavers over one semibreve: eight notes against one.
+const quavers = Array.from({ length: 8 }, () => ({ key: 'c/4', dur: 'e' }));
+renderGrandStaff('probe', { treble: quavers, bass: [{ key: 'c/3', dur: 'w' }] }, 760, 300, '4/4');
+const heads = noteHeads(rendered.probe);
+const g = grandStaffGeometry();
+const upper = heads.filter(h => h.y < g.bassTop).sort((a, b) => a.x - b.x);
+const lower = heads.filter(h => h.y >= g.bassTop);
+check('a hand of many short notes and a hand of one long one both get drawn',
+      upper.length === 8 && lower.length === 1,
+      `${upper.length} above, ${lower.length} below`);
+check('the two hands start at the same place',
+      upper.length > 0 && lower.length > 0 && Math.abs(upper[0].x - lower[0].x) < 0.01,
+      upper.length && lower.length ? `right hand starts at x=${upper[0].x}, left hand at x=${lower[0].x}` : 'a hand drew nothing');
+check('the notes advance across the staff',
+      upper.every((h, i) => i === 0 || h.x > upper[i - 1].x) && upper[7].x - upper[0].x > 100,
+      `eight quavers span ${(upper[7].x - upper[0].x).toFixed(1)}px - "evenly spaced" is also true of all of them piled on one spot`);
+check('the short notes are spread evenly across the bar',
+      upper.every((h, i) => i === 0 || Math.abs((h.x - upper[i - 1].x) - (upper[1].x - upper[0].x)) < 0.01),
+      upper.map(h => h.x.toFixed(1)).join(', '));
+
+// Two hands divided differently must still meet on the beat they share.
+renderGrandStaff('probe', {
+  treble: [{ key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' }, { key: 'f/4' }],
+  bass: [{ key: 'c/3', dur: 'h' }, { key: 'g/3', dur: 'h' }],
+}, 760, 300, '4/4');
+const meetHeads = noteHeads(rendered.probe);
+const meetUpper = meetHeads.filter(h => h.y < g.bassTop).sort((a, b) => a.x - b.x);
+const meetLower = meetHeads.filter(h => h.y >= g.bassTop).sort((a, b) => a.x - b.x);
+check('beat 3 of one hand lands under beat 3 of the other',
+      meetUpper.length >= 3 && meetLower.length >= 2 && Math.abs(meetUpper[2].x - meetLower[1].x) < 0.01,
+      `right hand ${meetUpper.map(h => h.x.toFixed(1))}, left hand ${meetLower.map(h => h.x.toFixed(1))}`);
+
+/* 31c. it looks like a grand staff */
+
+renderGrandStaff('probe', { treble: PIECE.treble, bass: PIECE_BASS }, 760, 300, PIECE.timeSig);
+const grand = rendered.probe;
+check('there are two staves, five lines each',
+      (grand.match(/<line x1="15" y1="[-\d.]+" x2="745" y2="[-\d.]+" stroke="#64748b" stroke-width="1\.5"/g) || []).length === 10,
+      `${(grand.match(/stroke="#64748b" stroke-width="1\.5"/g) || []).length} staff line(s)`);
+check('a brace joins them', /stroke-width="2\.5"/.test(grand),
+      'nothing says these two staves are one instrument');
+check('both clefs are drawn', /🎼/.test(grand) && /M 6 12 C 6 6 13 4 15 10/.test(grand));
+check('the time signature appears on both staves',
+      (grand.match(/font-size="22" font-weight="800"/g) || []).length === 4,
+      `${(grand.match(/font-size="22" font-weight="800"/g) || []).length} numeral(s), want 4`);
+
+const barRule = new RegExp(
+  '<line x1="([-\\d.]+)" y1="' + g.trebleTop + '" x2="[-\\d.]+" y2="' + g.bassY1 + '" stroke="#64748b" stroke-width="2"', 'g');
+const throughBoth = [...grand.matchAll(barRule)];
+check('bar lines run through both staves, not through one',
+      throughBoth.length >= 4,
+      `${throughBoth.length} full-height rule(s) - a grand staff bars both hands together`);
+
+// Every key exists in both clefs, so drawing the left hand on the lower staff
+// while reading it in the treble clef puts the notes on the wrong lines and
+// nothing about the layout complains.
+renderGrandStaff('probe', { treble: [{ key: 'c/4', dur: 'w' }], bass: [{ key: 'c/3', dur: 'w' }] }, 760, 300, null);
+const twoHeads = noteHeads(rendered.probe);
+const bassHead = twoHeads.find(h => h.y >= g.bassTop);
+const bassStep = notesData.bass.find(n => n.key === 'c/3').step;
+check('the lower staff is read in the bass clef, not just drawn underneath',
+      bassHead && Math.abs(bassHead.y - (g.bassY1 - bassStep * (g.lineSpacing / 2))) < 0.01,
+      bassHead ? `C3 drawn at y=${bassHead.y}, the bass clef puts it at ${g.bassY1 - bassStep * (g.lineSpacing / 2)}` : 'nothing drawn below');
+
+check('nothing the grand staff draws falls outside its viewBox',
+      clipReport(grand) === null, clipReport(grand));
+
+let grandLogged = 0;
+let grandErr = console.error;
+console.error = () => grandLogged++;
+const empty = renderGrandStaff('probe', { treble: [], bass: [] }, 760, 300, '4/4');
+console.error = grandErr;
+check('a grand staff with nothing on it is refused', empty === false && grandLogged === 1);
+
+/* 31d. practising both hands together */
+
+const together = twoHandPracticeItems(PIECE);
+check('the two hands merge into one list of moments to play',
+      Array.isArray(together) && together.length > 0);
+check('notes that start together become one chord to press',
+      JSON.stringify(together[0].keys.slice().sort()) === JSON.stringify(['c/3', 'c/4', 'e/3', 'g/3']),
+      JSON.stringify(together[0].keys));
+check('the moments run in time order',
+      together.every((m, i) => i === 0 || m.beat > together[i - 1].beat),
+      together.map(m => m.beat).join(', '));
+check('no moment asks for the same key twice',
+      together.every(m => new Set(m.keys).size === m.keys.length));
+check('every key of the piece appears somewhere in the merged list',
+      new Set(together.flatMap(m => m.keys)).size
+        === new Set([...PIECE.treble.map(i => i.key), ...PIECE_BASS.flatMap(b => b.keys)]).size);
+
+const twoSource = practiceSources().find(s => s.id.startsWith('two-'));
+check('the two-hand piece can be practised', Boolean(twoSource) && Boolean(twoSource.parts));
+check('starting it sets both staves up',
+      startPracticeSource(twoSource.id) === true
+        && practice.parts !== null
+        && practice.parts.treble.length > 0 && practice.parts.bass.length > 0);
+check('it waits for both hands at once',
+      practiceExpected().length === 4, JSON.stringify(practiceExpected()));
+check('practising two hands draws a grand staff, not one staff',
+      /stroke-width="2\.5"/.test(rendered['practice-score']),
+      'the practice view is showing a single staff for a two-hand piece');
+
+// Play the whole piece correctly, both hands, and it should finish clean.
+let guard = 0, outcome = null;
+while (practiceExpected() && guard++ < 500) {
+  for (const key of practiceExpected()) outcome = gradeKeyPress(key);
+}
+check('both hands can be played through to the end',
+      outcome === 'complete' && practice.wrong === 0 && practice.correct === together.length,
+      `${practice.correct} of ${together.length} moments, ${practice.wrong} wrong`);
+stopPractice();
+
+/* 31e. hearing both hands */
+
+audio.ctx.currentTime = 9000;
+setPlaybackBpm(120);
+const bothHands = scenario(() => playTwoHands(PIECE.id));
+check('playing two hands raises no error', bothHands.errors === 0 && bothHands.result === true);
+const bothPlayed = bothHands.nodes.filter(n => n.kind === 'oscillator');
+const wantNotes = PIECE.treble.filter(i => !i.rest).length + PIECE_BASS.reduce((n, b) => n + b.keys.length, 0);
+check('every note of both hands is sounded', bothPlayed.length === wantNotes,
+      `${bothPlayed.length} note(s), want ${wantNotes}`);
+const firstStarts = bothPlayed.map(o => o.started[0]).sort((a, b) => a - b);
+check('the two hands begin together',
+      Math.abs(firstStarts[0] - firstStarts[3]) < 1e-9,
+      'the first melody note and the first chord do not land at the same moment');
+
+let playLogged = 0;
+grandErr = console.error;
+console.error = () => playLogged++;
+const noPiece = playTwoHands('không-có');
+console.error = grandErr;
+check('a piece that does not exist is refused', noPiece === false && playLogged === 1);
 
 /* ---- summary ----------------------------------------------------------- */
 

@@ -201,6 +201,259 @@ const isFingerNumber = (n) => Number.isInteger(n) && n >= 1 && n <= 5;
 // Fingering shown on the keys themselves - off unless asked for.
 let keyFingering = {};
 
+/* The two inks the notation is drawn in: everything the reader plays, and the
+ * lines and bars it is written on. */
+const INK = "#0f172a";
+const STAFF_INK = "#64748b";
+
+/* A label sits in a row above the staff. It shares that column with a finger
+ * number, so it steps up when a note carries both. */
+const LABEL_Y = 22;
+function labelSvg(x, text, fingerY, seen) {
+  const y = fingerY === null || fingerY === undefined ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);
+  if (y !== LABEL_Y) seen(y - 9);
+  return `<text x="${x}" y="${y}" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${text}</text>`;
+}
+
+// A rest has a duration but no pitch, so it sits at a spot fixed by
+// convention rather than one derived from a note name. Coordinates are
+// absolute (no group transform) so the viewBox fitter and the headless
+// checks measure the real ink.
+function restSvg(x, durKey, lineY1, lineSpacing, seen) {
+  const mid = lineY1 - 4 * (lineSpacing / 2);                      // the middle line
+  const half = lineSpacing / 2;
+
+  if (durKey === "w" || durKey === "h") {
+    // The whole rest hangs under line 4, the half rest sits on top of
+    // line 3. They fill opposite halves of the same space - that is the
+    // only thing telling the two apart, so it has to be exact.
+    const top = durKey === "w" ? lineY1 - 6 * (lineSpacing / 2) : mid - half;
+    seen(top); seen(top + half);
+    return `<rect x="${x - 6}" y="${top}" width="12" height="${half}" fill="${INK}"/>`;
+  }
+
+  if (durKey === "e") {
+    // One hook: a blob at the top left, a stroke slanting down to the left.
+    seen(mid - 8); seen(mid + 8);
+    return `<path d="M ${x + 3.5} ${mid - 8} L ${x - 2} ${mid + 8}" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`
+         + `<path d="M ${x + 3.5} ${mid - 8} c -1.5 -1, -3.5 -0.5, -4.5 1.5" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
+         + `<circle cx="${x - 2.5}" cy="${mid - 5}" r="2.9" fill="${INK}"/>`;
+  }
+
+  // Quarter rest: a zigzag straddling the middle line.
+  seen(mid - 10); seen(mid + 10);
+  return `<path d="M ${x - 4} ${mid - 10} L ${x + 3} ${mid - 3} L ${x - 3} ${mid + 2.5} L ${x + 3} ${mid + 10}" `
+       + `fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+
+/* ---- Drawing one item on a staff -----------------------------------------
+ * Pulled out of renderScoreSVG so a grand staff can put the same notes on a
+ * second set of lines. `ctx` says where: the x of this slot, where the staff's
+ * bottom line sits, which clef reads it, and the next item and its x, which a
+ * tie needs to reach.
+ *
+ * It reports the vertical extent it touched rather than reaching into a
+ * caller's viewBox fitter.
+ */
+function drawStaffItem(item, ctx) {
+const { clef, lineY1, lineSpacing, topMargin } = ctx;
+const noteX = ctx.x;
+let svg = '';
+let minY = Infinity, maxY = -Infinity;
+const seen = (y) => { if (y < minY) minY = y; if (y > maxY) maxY = y; };
+
+  // Silence takes up a slot in the bar exactly like a note does.
+  if (item.rest) {
+    if (item.finger !== undefined) {
+      console.error('renderScoreSVG: a rest has no finger - the number was dropped.');
+    }
+    const restDur = item.dur || DEFAULT_DUR;
+    if (!DURATIONS[restDur]) {
+      console.error(`renderScoreSVG: unknown duration "${restDur}" on a rest - drawing a lặng đen.`);
+    }
+    svg += restSvg(noteX, DURATIONS[restDur] ? restDur : DEFAULT_DUR, lineY1, lineSpacing, seen);
+    if (item.label) svg += labelSvg(noteX, item.label, null, seen);
+    return { svg, minY, maxY };
+  }
+
+  // A chord is a stack of noteheads sharing one slot and one stem, so
+  // everything below works on a list even when there is only one note in
+  // it. `item.keys` gives the stack; `item.key` stays the single-note way.
+  const stackKeys = Array.isArray(item.keys) ? item.keys : [item.key];
+  const stack = [];
+  for (const stackKey of stackKeys) {
+    const found = notesData[clef].find(n => n.key === stackKey);
+    if (!found) {
+      // Never guess a position: a wrong notehead teaches the wrong thing.
+      console.error(`renderScoreSVG: no "${clef}" entry for key "${stackKey}" - skipped.`);
+      continue;
+    }
+    stack.push(found);
+  }
+  if (stack.length === 0) return { svg, minY, maxY };
+  stack.sort((a, b) => a.step - b.step);
+
+  // Spelling a sharp as a flat moves it onto the letter above: C# sits on
+  // the C line, Db on the D line. Same key, different place on the staff.
+  const spellFlat = item.spell === 'flat';
+  if (spellFlat && !stack.every(n => n.acc)) {
+    console.error(`renderScoreSVG: "${item.key}" has no sharp to respell as a flat.`);
+  }
+  const useFlat = spellFlat && stack.every(n => n.acc);
+
+  const steps = stack.map(n => (useFlat ? flatSpelledStep(n.step) : n.step));
+  const lowStep = steps[0], highStep = steps[steps.length - 1];
+  const yOfStep = (s) => lineY1 - s * (lineSpacing / 2);
+  const noteY = yOfStep(highStep);      // top of the stack, for the finger row
+
+  // The stack as a whole decides the stem direction. For one note this is
+  // the old rule, `step <= 4`, unchanged.
+  const stemUp = (lowStep + highStep) / 2 <= 4;
+
+  // Two notes a second apart cannot share a column, so the upper one of
+  // each pair moves to the far side of the stem.
+  const shifted = [];
+  for (let i = 0; i < steps.length; i++) {
+    shifted.push(i > 0 && steps[i] - steps[i - 1] === 1 && !shifted[i - 1]);
+  }
+
+  // Ledger lines belong to the stack, not to each note: two notes below
+  // the staff cross the same lines, and drawing them twice thickens them.
+  const ledgerSteps = [];
+  for (const s of steps) {
+    if (s <= -2) {
+      for (let l = -2; l >= s; l -= 2) if (!ledgerSteps.includes(l)) ledgerSteps.push(l);
+    } else if (s >= 10) {
+      for (let u = 10; u <= s; u += 2) if (!ledgerSteps.includes(u)) ledgerSteps.push(u);
+    }
+  }
+  for (const l of ledgerSteps) {
+    const ledgerY = yOfStep(l);
+    seen(ledgerY);
+    svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
+  }
+
+  // Accidentals stack leftwards, top note first, so they do not collide.
+  let accSlot = 0;
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const accChar = useFlat ? '♭' : ((stack.length === 1 ? item.acc : null) || stack[i].acc);
+    if (!accChar) continue;
+    svg += `<text x="${noteX - 16 - accSlot * 11}" y="${yOfStep(steps[i]) + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
+    accSlot++;
+  }
+
+  // Duration drives the notehead shape, the stem and any flags.
+  const durKey = item.dur || DEFAULT_DUR;
+  const dur = DURATIONS[durKey];
+  if (!dur) {
+    console.error(`renderScoreSVG: unknown duration "${durKey}" on "${item.key}" - drawing a quarter note.`);
+  }
+  const shape = dur || DURATIONS[DEFAULT_DUR];
+
+  // Draw Notehead: hollow for whole/half, filled for quarter/eighth.
+  // The whole note is wider and sits upright; the rest lean like handwriting.
+  for (let i = 0; i < stack.length; i++) {
+    const headY = yOfStep(steps[i]);
+    const headX = shifted[i] ? noteX + (stemUp ? 11 : -11) : noteX;
+    seen(headY);
+    // `item.highlight` colours the head without changing its shape, so the
+    // learner can see which note is being waited for without the notation
+    // itself saying something different.
+    const headInk = item.highlight ? '#2563eb' : '#0f172a';
+    if (shape.hollow && !shape.stem) {
+      svg += `<ellipse cx="${headX}" cy="${headY}" rx="7" ry="4.8" fill="none" stroke="${headInk}" stroke-width="1.8"/>`;
+    } else {
+      const fill = shape.hollow
+        ? `fill="none" stroke="${headInk}" stroke-width="1.6"`
+        : `fill="${headInk}"`;
+      svg += `<g transform="translate(${headX}, ${headY}) rotate(-20)">
+                    <ellipse cx="0" cy="0" rx="6" ry="4.5" ${fill} />
+                  </g>`;
+    }
+  }
+
+  // The dot goes to the right of the notehead. A note sitting on a line
+  // has no room there, so its dot moves up into the space above - which
+  // is where an engraver puts it too.
+  if (item.dot) {
+    for (let i = 0; i < stack.length; i++) {
+      const onLine = steps[i] % 2 === 0;
+      const dotY = yOfStep(steps[i]) - (onLine ? lineSpacing / 2 : 0);
+      seen(dotY);
+      svg += `<circle cx="${noteX + 12}" cy="${dotY}" r="2.2" fill="${INK}"/>`;
+    }
+  }
+
+  // Draw Stem (down if the note sits high on the staff, up if low). It
+  // runs from the notehead at one end of the stack to past the other.
+  if (shape.stem) {
+    const dir = stemUp ? -1 : 1;              // -1 draws upward on screen
+    const stemX = noteX + (stemUp ? 5.5 : -5.5);
+    const anchorY = stemUp ? yOfStep(lowStep) : yOfStep(highStep);
+    const stemY2 = (stemUp ? yOfStep(highStep) : yOfStep(lowStep)) + dir * 26;
+    seen(stemY2);
+    svg += `<line x1="${stemX}" y1="${anchorY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
+
+    // Draw flags. A flag hangs from the stem tip and sweeps back toward
+    // the notehead - so it runs opposite the stem, never past the tip.
+    const flagDir = -dir;
+    for (let f = 0; f < shape.flags; f++) {
+      const tipY = stemY2 + flagDir * f * 7;
+      svg += `<path d="M ${stemX} ${tipY} `
+           + `c 7 ${flagDir * 3}, 10 ${flagDir * 9}, 7 ${flagDir * 16} `
+           + `c 1 ${flagDir * -7}, -3 ${flagDir * -11}, -7 ${flagDir * -13} z" fill="#0f172a"/>`;
+    }
+  }
+
+  // A tie joins this note to the next one at the same pitch: they sound
+  // as one longer note. A curve between two different pitches is a slur,
+  // which means something else entirely, so that is refused.
+  if (item.tie) {
+    const next = ctx.nextItem;
+    if (!next) {
+      console.error('renderScoreSVG: the last note is tied to nothing.');
+    } else if (next.rest) {
+      console.error('renderScoreSVG: a note cannot be tied to a rest.');
+    } else if ((next.key || (next.keys || [])[0]) !== (item.key || stackKeys[0])) {
+      console.error(`renderScoreSVG: "${item.key}" is tied to "${next.key}" - a tie joins the same pitch, a curve between different ones is a slur.`);
+    } else {
+      const tieY = yOfStep(lowStep);
+      const bow = stemUp ? 12 : -12;         // arc away from the stems
+      const endX = ctx.nextX;
+      seen(tieY + bow);
+      svg += `<path d="M ${noteX + 7} ${tieY + (stemUp ? 4 : -4)} `
+           + `Q ${(noteX + endX) / 2} ${tieY + bow}, ${endX - 7} ${tieY + (stemUp ? 4 : -4)}" `
+           + `fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
+    }
+  }
+
+  // Fingering is printed as a row above the staff, the way piano method
+  // books set it, and only climbs higher for a note that already sits
+  // above that row. Hugging each notehead instead would put the number
+  // in among the ledger lines of anything far below the staff - at C2 it
+  // landed squarely on top of them.
+  //
+  // Only the notehead is worth measuring here. A stem pointing up belongs
+  // to a note on or below the middle line, which is always well below the
+  // row, so the stem tip can never be the thing the number has to clear.
+  let fingerY = null;
+  if (item.finger !== undefined) {
+    if (!isFingerNumber(item.finger)) {
+      console.error(`renderScoreSVG: finger "${item.finger}" on "${item.key}" is not 1-5 - skipped.`);
+    } else {
+      fingerY = Math.min(topMargin - 8, noteY - 13);
+      seen(fingerY - 9);
+      svg += `<text x="${noteX}" y="${fingerY}" font-family="Inter, sans-serif" font-size="12" font-weight="800" fill="#7c3aed" text-anchor="middle">${item.finger}</text>`;
+    }
+  }
+
+  // Draw Annotation Label if provided
+  if (item.label) svg += labelSvg(noteX, item.label, fingerY, seen);
+return { svg, minY, maxY };
+}
+
+
 // Generalized SVG Pure Renderer Function
 function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null, keySig = null) {
   const container = document.getElementById(containerId);
@@ -210,8 +463,6 @@ function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, h
   const topMargin = 50;
   const lineY1 = topMargin + 4 * lineSpacing; // Bottom line (Line 1)
   const yAtStep = (s) => lineY1 - s * (lineSpacing / 2);
-  const INK = "#0f172a";
-  const STAFF_INK = "#64748b";
 
   // Time signature, written "phách/đơn-vị" as in "3/4". Leaving it out means
   // a bare staff with no bars - what every caller written before T3 expects,
@@ -283,45 +534,7 @@ function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, h
   }
 
   const LABEL_Y = 22;
-  const labelSvg = (x, text, fingerY = null) => {
-    // A label and a finger number share the same column, so the label steps
-    // up out of the way when both are on the one note.
-    const y = fingerY === null ? LABEL_Y : Math.min(LABEL_Y, fingerY - 14);
-    if (y !== LABEL_Y) seen(y - 9);
-    return `<text x="${x}" y="${y}" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#2563eb" text-anchor="middle">${text}</text>`;
-  };
-
-  // A rest has a duration but no pitch, so it sits at a spot fixed by
-  // convention rather than one derived from a note name. Coordinates are
-  // absolute (no group transform) so the viewBox fitter and the headless
-  // checks measure the real ink.
-  function restSvg(x, durKey) {
-    const mid = yAtStep(4);                      // the middle line
-    const half = lineSpacing / 2;
-
-    if (durKey === "w" || durKey === "h") {
-      // The whole rest hangs under line 4, the half rest sits on top of
-      // line 3. They fill opposite halves of the same space - that is the
-      // only thing telling the two apart, so it has to be exact.
-      const top = durKey === "w" ? yAtStep(6) : mid - half;
-      seen(top); seen(top + half);
-      return `<rect x="${x - 6}" y="${top}" width="12" height="${half}" fill="${INK}"/>`;
-    }
-
-    if (durKey === "e") {
-      // One hook: a blob at the top left, a stroke slanting down to the left.
-      seen(mid - 8); seen(mid + 8);
-      return `<path d="M ${x + 3.5} ${mid - 8} L ${x - 2} ${mid + 8}" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`
-           + `<path d="M ${x + 3.5} ${mid - 8} c -1.5 -1, -3.5 -0.5, -4.5 1.5" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
-           + `<circle cx="${x - 2.5}" cy="${mid - 5}" r="2.9" fill="${INK}"/>`;
-    }
-
-    // Quarter rest: a zigzag straddling the middle line.
-    seen(mid - 10); seen(mid + 10);
-    return `<path d="M ${x - 4} ${mid - 10} L ${x + 3} ${mid - 3} L ${x - 3} ${mid + 2.5} L ${x + 3} ${mid + 10}" `
-         + `fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-
+  // labelSvg, restSvg and the item drawing now live at module scope.
   // Draw Notes with Dynamic Ledger Lines
   const totalNotes = notesArray.length;
   const availWidth = width - startX - 35;
@@ -356,197 +569,13 @@ function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, h
   }
 
   notesArray.forEach((item, idx) => {
-    const noteX = xOf(idx);
-
-    // Silence takes up a slot in the bar exactly like a note does.
-    if (item.rest) {
-      if (item.finger !== undefined) {
-        console.error('renderScoreSVG: a rest has no finger - the number was dropped.');
-      }
-      const restDur = item.dur || DEFAULT_DUR;
-      if (!DURATIONS[restDur]) {
-        console.error(`renderScoreSVG: unknown duration "${restDur}" on a rest - drawing a lặng đen.`);
-      }
-      svg += restSvg(noteX, DURATIONS[restDur] ? restDur : DEFAULT_DUR);
-      if (item.label) svg += labelSvg(noteX, item.label);
-      return;
-    }
-
-    // A chord is a stack of noteheads sharing one slot and one stem, so
-    // everything below works on a list even when there is only one note in
-    // it. `item.keys` gives the stack; `item.key` stays the single-note way.
-    const stackKeys = Array.isArray(item.keys) ? item.keys : [item.key];
-    const stack = [];
-    for (const stackKey of stackKeys) {
-      const found = notesData[clef].find(n => n.key === stackKey);
-      if (!found) {
-        // Never guess a position: a wrong notehead teaches the wrong thing.
-        console.error(`renderScoreSVG: no "${clef}" entry for key "${stackKey}" - skipped.`);
-        continue;
-      }
-      stack.push(found);
-    }
-    if (stack.length === 0) return;
-    stack.sort((a, b) => a.step - b.step);
-
-    // Spelling a sharp as a flat moves it onto the letter above: C# sits on
-    // the C line, Db on the D line. Same key, different place on the staff.
-    const spellFlat = item.spell === 'flat';
-    if (spellFlat && !stack.every(n => n.acc)) {
-      console.error(`renderScoreSVG: "${item.key}" has no sharp to respell as a flat.`);
-    }
-    const useFlat = spellFlat && stack.every(n => n.acc);
-
-    const steps = stack.map(n => (useFlat ? flatSpelledStep(n.step) : n.step));
-    const lowStep = steps[0], highStep = steps[steps.length - 1];
-    const yOfStep = (s) => lineY1 - s * (lineSpacing / 2);
-    const noteY = yOfStep(highStep);      // top of the stack, for the finger row
-
-    // The stack as a whole decides the stem direction. For one note this is
-    // the old rule, `step <= 4`, unchanged.
-    const stemUp = (lowStep + highStep) / 2 <= 4;
-
-    // Two notes a second apart cannot share a column, so the upper one of
-    // each pair moves to the far side of the stem.
-    const shifted = [];
-    for (let i = 0; i < steps.length; i++) {
-      shifted.push(i > 0 && steps[i] - steps[i - 1] === 1 && !shifted[i - 1]);
-    }
-
-    // Ledger lines belong to the stack, not to each note: two notes below
-    // the staff cross the same lines, and drawing them twice thickens them.
-    const ledgerSteps = [];
-    for (const s of steps) {
-      if (s <= -2) {
-        for (let l = -2; l >= s; l -= 2) if (!ledgerSteps.includes(l)) ledgerSteps.push(l);
-      } else if (s >= 10) {
-        for (let u = 10; u <= s; u += 2) if (!ledgerSteps.includes(u)) ledgerSteps.push(u);
-      }
-    }
-    for (const l of ledgerSteps) {
-      const ledgerY = yOfStep(l);
-      seen(ledgerY);
-      svg += `<line x1="${noteX - 13}" y1="${ledgerY}" x2="${noteX + 13}" y2="${ledgerY}" stroke="#334155" stroke-width="1.5"/>`;
-    }
-
-    // Accidentals stack leftwards, top note first, so they do not collide.
-    let accSlot = 0;
-    for (let i = stack.length - 1; i >= 0; i--) {
-      const accChar = useFlat ? '♭' : ((stack.length === 1 ? item.acc : null) || stack[i].acc);
-      if (!accChar) continue;
-      svg += `<text x="${noteX - 16 - accSlot * 11}" y="${yOfStep(steps[i]) + 4}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2563eb">${accChar}</text>`;
-      accSlot++;
-    }
-
-    // Duration drives the notehead shape, the stem and any flags.
-    const durKey = item.dur || DEFAULT_DUR;
-    const dur = DURATIONS[durKey];
-    if (!dur) {
-      console.error(`renderScoreSVG: unknown duration "${durKey}" on "${item.key}" - drawing a quarter note.`);
-    }
-    const shape = dur || DURATIONS[DEFAULT_DUR];
-
-    // Draw Notehead: hollow for whole/half, filled for quarter/eighth.
-    // The whole note is wider and sits upright; the rest lean like handwriting.
-    for (let i = 0; i < stack.length; i++) {
-      const headY = yOfStep(steps[i]);
-      const headX = shifted[i] ? noteX + (stemUp ? 11 : -11) : noteX;
-      seen(headY);
-      // `item.highlight` colours the head without changing its shape, so the
-      // learner can see which note is being waited for without the notation
-      // itself saying something different.
-      const headInk = item.highlight ? '#2563eb' : '#0f172a';
-      if (shape.hollow && !shape.stem) {
-        svg += `<ellipse cx="${headX}" cy="${headY}" rx="7" ry="4.8" fill="none" stroke="${headInk}" stroke-width="1.8"/>`;
-      } else {
-        const fill = shape.hollow
-          ? `fill="none" stroke="${headInk}" stroke-width="1.6"`
-          : `fill="${headInk}"`;
-        svg += `<g transform="translate(${headX}, ${headY}) rotate(-20)">
-                    <ellipse cx="0" cy="0" rx="6" ry="4.5" ${fill} />
-                  </g>`;
-      }
-    }
-
-    // The dot goes to the right of the notehead. A note sitting on a line
-    // has no room there, so its dot moves up into the space above - which
-    // is where an engraver puts it too.
-    if (item.dot) {
-      for (let i = 0; i < stack.length; i++) {
-        const onLine = steps[i] % 2 === 0;
-        const dotY = yOfStep(steps[i]) - (onLine ? lineSpacing / 2 : 0);
-        seen(dotY);
-        svg += `<circle cx="${noteX + 12}" cy="${dotY}" r="2.2" fill="${INK}"/>`;
-      }
-    }
-
-    // Draw Stem (down if the note sits high on the staff, up if low). It
-    // runs from the notehead at one end of the stack to past the other.
-    if (shape.stem) {
-      const dir = stemUp ? -1 : 1;              // -1 draws upward on screen
-      const stemX = noteX + (stemUp ? 5.5 : -5.5);
-      const anchorY = stemUp ? yOfStep(lowStep) : yOfStep(highStep);
-      const stemY2 = (stemUp ? yOfStep(highStep) : yOfStep(lowStep)) + dir * 26;
-      seen(stemY2);
-      svg += `<line x1="${stemX}" y1="${anchorY}" x2="${stemX}" y2="${stemY2}" stroke="#0f172a" stroke-width="1.5"/>`;
-
-      // Draw flags. A flag hangs from the stem tip and sweeps back toward
-      // the notehead - so it runs opposite the stem, never past the tip.
-      const flagDir = -dir;
-      for (let f = 0; f < shape.flags; f++) {
-        const tipY = stemY2 + flagDir * f * 7;
-        svg += `<path d="M ${stemX} ${tipY} `
-             + `c 7 ${flagDir * 3}, 10 ${flagDir * 9}, 7 ${flagDir * 16} `
-             + `c 1 ${flagDir * -7}, -3 ${flagDir * -11}, -7 ${flagDir * -13} z" fill="#0f172a"/>`;
-      }
-    }
-
-    // A tie joins this note to the next one at the same pitch: they sound
-    // as one longer note. A curve between two different pitches is a slur,
-    // which means something else entirely, so that is refused.
-    if (item.tie) {
-      const next = notesArray[idx + 1];
-      if (!next) {
-        console.error('renderScoreSVG: the last note is tied to nothing.');
-      } else if (next.rest) {
-        console.error('renderScoreSVG: a note cannot be tied to a rest.');
-      } else if ((next.key || (next.keys || [])[0]) !== (item.key || stackKeys[0])) {
-        console.error(`renderScoreSVG: "${item.key}" is tied to "${next.key}" - a tie joins the same pitch, a curve between different ones is a slur.`);
-      } else {
-        const tieY = yOfStep(lowStep);
-        const bow = stemUp ? 12 : -12;         // arc away from the stems
-        const endX = xOf(idx + 1);
-        seen(tieY + bow);
-        svg += `<path d="M ${noteX + 7} ${tieY + (stemUp ? 4 : -4)} `
-             + `Q ${(noteX + endX) / 2} ${tieY + bow}, ${endX - 7} ${tieY + (stemUp ? 4 : -4)}" `
-             + `fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
-      }
-    }
-
-    // Fingering is printed as a row above the staff, the way piano method
-    // books set it, and only climbs higher for a note that already sits
-    // above that row. Hugging each notehead instead would put the number
-    // in among the ledger lines of anything far below the staff - at C2 it
-    // landed squarely on top of them.
-    //
-    // Only the notehead is worth measuring here. A stem pointing up belongs
-    // to a note on or below the middle line, which is always well below the
-    // row, so the stem tip can never be the thing the number has to clear.
-    let fingerY = null;
-    if (item.finger !== undefined) {
-      if (!isFingerNumber(item.finger)) {
-        console.error(`renderScoreSVG: finger "${item.finger}" on "${item.key}" is not 1-5 - skipped.`);
-      } else {
-        fingerY = Math.min(topMargin - 8, noteY - 13);
-        seen(fingerY - 9);
-        svg += `<text x="${noteX}" y="${fingerY}" font-family="Inter, sans-serif" font-size="12" font-weight="800" fill="#7c3aed" text-anchor="middle">${item.finger}</text>`;
-      }
-    }
-
-    // Draw Annotation Label if provided
-    if (item.label) svg += labelSvg(noteX, item.label, fingerY);
+    const drawn = drawStaffItem(item, {
+      x: xOf(idx), lineY1, lineSpacing, topMargin, clef,
+      nextItem: notesArray[idx + 1], nextX: xOf(idx + 1),
+    });
+    svg += drawn.svg;
+    if (drawn.minY < Infinity) { seen(drawn.minY); seen(drawn.maxY); }
   });
-
   const vbTop = Math.min(0, minY - 14);
   const vbBottom = Math.max(height, maxY + 14);
   container.innerHTML = `<svg width="${width}" height="${height}" viewBox="0 ${vbTop} ${width} ${vbBottom - vbTop}" `
@@ -1774,6 +1803,243 @@ function handleComputerKeyDown(event) {
   return true;
 }
 
+/* ---- The grand staff -----------------------------------------------------
+ * Two staves joined by a brace, treble above bass, the way piano and organ
+ * music is written. The one thing that makes this different from drawing two
+ * staves one above the other is that the notes have to line up *in time*:
+ * a note on beat 3 of the left hand must sit directly under beat 3 of the
+ * right. So slots here are placed by accumulated beats, not by index the way
+ * renderScoreSVG does it - a melody of eight quavers and an accompaniment of
+ * two minims cover the same ground.
+ */
+const GRAND = { lineSpacing: 10, trebleTop: 50, staffGap: 60 };
+
+function grandStaffGeometry() {
+  const { lineSpacing, trebleTop, staffGap } = GRAND;
+  const trebleY1 = trebleTop + 4 * lineSpacing;
+  const bassTop = trebleY1 + staffGap;
+  return { lineSpacing, trebleTop, trebleY1, bassTop, bassY1: bassTop + 4 * lineSpacing };
+}
+
+const partBeats = (items) => items.reduce((n, it) => n + itemBeats(it), 0);
+
+function renderGrandStaff(containerId, parts, width = 760, height = 300, timeSig = null) {
+  const container = document.getElementById(containerId);
+  if (!container) return false;
+
+  const treble = Array.isArray(parts && parts.treble) ? parts.treble : [];
+  const bass = Array.isArray(parts && parts.bass) ? parts.bass : [];
+  if (!treble.length && !bass.length) {
+    console.error('renderGrandStaff: there is nothing on either staff.');
+    return false;
+  }
+
+  // Two hands playing different lengths is a mistake in the piece, not
+  // something to lay out anyway and hope nobody notices.
+  const trebleLen = partBeats(treble), bassLen = partBeats(bass);
+  if (treble.length && bass.length && Math.abs(trebleLen - bassLen) > 1e-9) {
+    console.warn(`renderGrandStaff: tay phải ${trebleLen} phách, tay trái ${bassLen} phách - hai tay không khớp.`);
+  }
+
+  const g = grandStaffGeometry();
+  let minY = g.trebleTop, maxY = g.bassY1;
+  const seen = (y) => { if (y < minY) minY = y; if (y > maxY) maxY = y; };
+  let svg = '';
+
+  let meter = null;
+  if (timeSig !== null && timeSig !== undefined) {
+    const sig = /^\s*(\d+)\s*\/\s*(\d+)\s*$/.exec(String(timeSig));
+    const top = sig && Number(sig[1]), bottom = sig && Number(sig[2]);
+    if (!sig || top < 1 || bottom < 1) {
+      console.error(`renderGrandStaff: unreadable time signature "${timeSig}" - drawing without one.`);
+    } else {
+      meter = { top, bottom, capacity: top * 4 / bottom };
+    }
+  }
+
+  const startX = meter ? 92 : 68;
+  const availWidth = width - startX - 40;
+  const totalBeats = Math.max(trebleLen, bassLen) || 1;
+  const beatW = availWidth / totalBeats;
+  const xOfBeat = (b) => startX + 14 + b * beatW;
+
+  // five lines each, twice
+  for (const top of [g.trebleTop, g.bassTop]) {
+    for (let i = 0; i < 5; i++) {
+      const y = top + i * g.lineSpacing;
+      svg += `<line x1="15" y1="${y}" x2="${width - 15}" y2="${y}" stroke="${STAFF_INK}" stroke-width="1.5"/>`;
+    }
+  }
+
+  // The brace is what says "one instrument, two hands" rather than two
+  // separate parts that happen to be printed together.
+  svg += `<path d="M 13 ${g.trebleTop} C 4 ${g.trebleTop + 18}, 4 ${g.trebleTop + 30}, 10 ${(g.trebleTop + g.bassY1) / 2} `
+       + `C 4 ${g.bassY1 - 30}, 4 ${g.bassY1 - 18}, 13 ${g.bassY1}" `
+       + `fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>`;
+  svg += `<line x1="15" y1="${g.trebleTop}" x2="15" y2="${g.bassY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+
+  svg += `<text x="20" y="${g.trebleTop + 32}" font-family="serif, 'Segoe UI Symbol', sans-serif" font-size="40" fill="${INK}" font-weight="bold">🎼</text>`;
+  svg += `<g transform="translate(22, ${g.bassTop + 5})">
+                    <path d="M 6 12 C 6 6 13 4 15 10 C 16 13 13 18 8 18 C 3 18 1 13 1 8 C 1 2 9 0 16 3 C 21 6 22 13 20 20 C 17 28 8 33 2 35" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>
+                    <circle cx="25" cy="6" r="2.5" fill="${INK}"/>
+                    <circle cx="25" cy="16" r="2.5" fill="${INK}"/>
+                  </g>`;
+
+  if (meter) {
+    const sigAttrs = `font-family="Inter, sans-serif" font-size="22" font-weight="800" fill="${INK}" text-anchor="middle" dominant-baseline="central"`;
+    for (const y1 of [g.trebleY1, g.bassY1]) {
+      svg += `<text x="66" y="${y1 - 6 * (g.lineSpacing / 2)}" ${sigAttrs}>${meter.top}</text>`;
+      svg += `<text x="66" y="${y1 - 2 * (g.lineSpacing / 2)}" ${sigAttrs}>${meter.bottom}</text>`;
+    }
+
+    // One bar line through both staves - that is what a grand staff is.
+    for (let b = meter.capacity; b < totalBeats - 1e-9; b += meter.capacity) {
+      const bx = xOfBeat(b) - beatW * 0.18;
+      svg += `<line x1="${bx}" y1="${g.trebleTop}" x2="${bx}" y2="${g.bassY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+    }
+  }
+
+  // closing double bar, through both staves
+  svg += `<line x1="${width - 21}" y1="${g.trebleTop}" x2="${width - 21}" y2="${g.bassY1}" stroke="${STAFF_INK}" stroke-width="2"/>`;
+  svg += `<line x1="${width - 15}" y1="${g.trebleTop}" x2="${width - 15}" y2="${g.bassY1}" stroke="${STAFF_INK}" stroke-width="5"/>`;
+
+  const drawPart = (items, lineY1, clef) => {
+    let beats = 0;
+    items.forEach((item, idx) => {
+      const after = beats + itemBeats(item);
+      const drawn = drawStaffItem(item, {
+        x: xOfBeat(beats), lineY1, lineSpacing: g.lineSpacing,
+        topMargin: lineY1 - 4 * g.lineSpacing, clef,
+        nextItem: items[idx + 1], nextX: xOfBeat(after),
+      });
+      svg += drawn.svg;
+      if (drawn.minY < Infinity) { seen(drawn.minY); seen(drawn.maxY); }
+      beats = after;
+    });
+  };
+  drawPart(treble, g.trebleY1, 'treble');
+  drawPart(bass, g.bassY1, 'bass');
+
+  const vbTop = Math.min(0, minY - 14);
+  const vbBottom = Math.max(height, maxY + 14);
+  container.innerHTML = `<svg width="${width}" height="${height}" viewBox="0 ${vbTop} ${width} ${vbBottom - vbTop}" `
+    + `preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="select-none">`
+    + svg + `</svg>`;
+  return true;
+}
+
+/* ---- Pieces for two hands -------------------------------------------------
+ * The left hand is written as chord names, not as note lists: the notes come
+ * from CHORDS through chordVoicing, so a chord is spelled in exactly one
+ * place in this project and T8 already checks that spelling against theory.
+ */
+const TWO_HAND_PIECES = [
+  {
+    id: 'anh-sao-nho-2-tay',
+    title: 'Ánh Sao Nhỏ — hai tay',
+    origin: 'Giai điệu dân ca Pháp "Ah! vous dirai-je, maman" — phạm vi công cộng',
+    timeSig: '4/4',
+    treble: [
+      { key: 'c/4' }, { key: 'c/4' }, { key: 'g/4' }, { key: 'g/4' },
+      { key: 'a/4' }, { key: 'a/4' }, { key: 'g/4', dur: 'h' },
+      { key: 'f/4' }, { key: 'f/4' }, { key: 'e/4' }, { key: 'e/4' },
+      { key: 'd/4' }, { key: 'd/4' }, { key: 'c/4', dur: 'h' },
+    ],
+    // One chord to the half bar, which is as slow as an accompaniment gets.
+    bassChords: [
+      { chord: 'C', dur: 'w' },
+      { chord: 'F', dur: 'h' }, { chord: 'C', dur: 'h' },
+      { chord: 'F', dur: 'h' }, { chord: 'C', dur: 'h' },
+      { chord: 'G7', dur: 'h' }, { chord: 'C', dur: 'h' },
+    ],
+  },
+];
+
+// Turn the chord names of a left hand into notes to draw and play.
+function twoHandBass(piece) {
+  const out = [];
+  for (const entry of piece.bassChords) {
+    const notes = chordVoicing(entry.chord, 0);
+    if (!notes) return null;
+    out.push({ keys: notes, dur: entry.dur, label: entry.chord });
+  }
+  return out;
+}
+
+/* Both hands as one list to practise: everything that starts at the same
+ * moment becomes one chord, which the grading already knows how to wait for.
+ */
+function twoHandPracticeItems(piece) {
+  const bass = twoHandBass(piece);
+  if (!bass) return null;
+
+  const onsets = new Map();
+  const collect = (items) => {
+    let beats = 0;
+    for (const item of items) {
+      if (!item.rest) {
+        const keys = Array.isArray(item.keys) ? item.keys : [item.key];
+        const at = Math.round(beats * 1000) / 1000;
+        if (!onsets.has(at)) onsets.set(at, []);
+        for (const key of keys) if (!onsets.get(at).includes(key)) onsets.get(at).push(key);
+      }
+      beats += itemBeats(item);
+    }
+  };
+  collect(piece.treble);
+  collect(bass);
+
+  return [...onsets.keys()].sort((a, b) => a - b).map(beat => ({ beat, keys: onsets.get(beat) }));
+}
+
+// Play a two-hand piece: each hand keeps its own clock, and they meet because
+// both are measured in beats from the same start.
+function playTwoHands(pieceId) {
+  const piece = TWO_HAND_PIECES.find(p => p.id === pieceId);
+  if (!piece) {
+    console.error(`playTwoHands: there is no piece called "${pieceId}".`);
+    return false;
+  }
+  const bass = twoHandBass(piece);
+  if (!bass) return false;
+
+  const ctx = ensureAudio();
+  const secPerBeat = 60 / player.bpm;
+  const at0 = ctx.currentTime + 0.1;
+
+  const schedule = (items, clef, tag) => {
+    let beats = 0;
+    items.forEach((item, idx) => {
+      const seconds = itemBeats(item) * secPerBeat;
+      if (!item.rest) {
+        const keys = Array.isArray(item.keys) ? item.keys : [item.key];
+        for (const key of keys) {
+          const note = notesData[clef].find(n => n.key === key);
+          if (note) playTone(note.freq, { at: at0 + beats * secPerBeat, hold: seconds * 0.92, voice: `${tag}-${idx}-${key}` });
+        }
+      }
+      beats += itemBeats(item);
+    });
+  };
+  schedule(piece.treble, 'treble', 'rh');
+  schedule(bass, 'bass', 'lh');
+  return true;
+}
+
+function showTwoHandPiece(pieceId) {
+  const piece = TWO_HAND_PIECES.find(p => p.id === pieceId);
+  if (!piece) {
+    console.error(`showTwoHandPiece: there is no piece called "${pieceId}".`);
+    return false;
+  }
+  const bass = twoHandBass(piece);
+  if (!bass) return false;
+  renderGrandStaff('twohand-score', { treble: piece.treble, bass }, 1000, 300, piece.timeSig);
+  const caption = document.getElementById('twohand-origin');
+  if (caption) caption.innerText = piece.origin;
+  return true;
+}
+
 /* ---- Grading what the learner plays --------------------------------------
  * Everything else on this page demonstrates. This is the only part that
  * watches the learner and says whether they got it right, which is the thing
@@ -1789,6 +2055,7 @@ const practice = {
   active: false,
   items: [],
   clef: 'treble',
+  parts: null,        // set for a two-hand piece: { treble, bass }
   timeSig: null,      // whatever the passage is written in, not an assumption
   title: '',
   index: 0,
@@ -1818,17 +2085,24 @@ function startPractice(items, opts = {}) {
     return false;
   }
   const clef = opts.clef || 'treble';
+  const parts = opts.parts || null;
+  // A two-hand piece spans both staves, so what matters is that the keys are
+  // on the instrument, not that they fit one clef.
+  const playable = (key) => parts
+    ? keyboardKeys.some(k => k.key === key)
+    : notesData[clef].some(n => n.key === key);
   const missing = items.filter(it => !it.rest)
     .flatMap(it => (Array.isArray(it.keys) ? it.keys : [it.key]))
-    .filter(key => !notesData[clef].some(n => n.key === key));
+    .filter(key => !playable(key));
   if (missing.length) {
-    console.error(`startPractice: ${missing.join(', ')} cannot be played in the "${clef}" clef.`);
+    console.error(`startPractice: ${missing.join(', ')} ${parts ? 'is not on the keyboard' : `cannot be played in the "${clef}" clef`}.`);
     return false;
   }
 
   practice.active = true;
   practice.items = items;
   practice.clef = clef;
+  practice.parts = parts;
   practice.timeSig = opts.timeSig || null;
   practice.title = opts.title || '';
   practice.index = 0;
@@ -1914,9 +2188,26 @@ function renderPractice() {
   }
 
   // The note being waited for is marked on the staff, not moved or resized.
-  const shown = practice.items.map((item, i) =>
-    i === practice.index ? { ...item, highlight: true } : item);
-  renderScoreSVG('practice-score', shown, practice.clef, 1120, 190, practice.timeSig);
+  if (practice.parts) {
+    // Both hands: mark everything that starts at the moment being waited for,
+    // which is what makes it clear the two notes are meant to land together.
+    const at = practice.items[practice.index] ? practice.items[practice.index].beat : null;
+    const mark = (items) => {
+      let beats = 0;
+      return items.map(item => {
+        const onset = Math.round(beats * 1000) / 1000;
+        beats += itemBeats(item);
+        return onset === at ? { ...item, highlight: true } : item;
+      });
+    };
+    renderGrandStaff('practice-score',
+      { treble: mark(practice.parts.treble), bass: mark(practice.parts.bass) },
+      1120, 300, practice.timeSig);
+  } else {
+    const shown = practice.items.map((item, i) =>
+      i === practice.index ? { ...item, highlight: true } : item);
+    renderScoreSVG('practice-score', shown, practice.clef, 1120, 190, practice.timeSig);
+  }
 
   const expected = practiceExpected();
   showNextKeys(expected || []);
@@ -1955,6 +2246,11 @@ function practiceSources() {
     ...SONGS.map(song => ({
       id: `song-${song.id}`, label: song.title, items: song.notes, clef: song.clef, timeSig: song.timeSig,
     })),
+    ...TWO_HAND_PIECES.map(piece => ({
+      id: `two-${piece.id}`, label: piece.title, timeSig: piece.timeSig, clef: 'treble',
+      items: twoHandPracticeItems(piece) || [],
+      parts: { treble: piece.treble, bass: twoHandBass(piece) },
+    })),
   ];
 }
 
@@ -1964,7 +2260,9 @@ function startPracticeSource(id) {
     console.error(`startPracticeSource: there is nothing called "${id}" to practise.`);
     return false;
   }
-  return startPractice(source.items, { clef: source.clef, timeSig: source.timeSig, title: source.label });
+  return startPractice(source.items, {
+    clef: source.clef, timeSig: source.timeSig, title: source.label, parts: source.parts,
+  });
 }
 
 function buildPracticeSources() {
@@ -2624,6 +2922,7 @@ window.onload = function() {
   buildBeatLights();
   buildIntervalButtons();
   buildPracticeSources();
+  showTwoHandPiece('anh-sao-nho-2-tay');
   renderPractice();
   renderEarTraining();
   setTypingOctave(TYPING_OCTAVE.current);
