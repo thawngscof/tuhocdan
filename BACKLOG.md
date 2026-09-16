@@ -35,7 +35,7 @@ Mảng **trường độ** — vốn là chỗ trống lớn nhất khi viết b
 | Chơi bằng bàn phím máy tính, nhãn ARIA | ✅ T16 |
 | Dùng được trên điện thoại | ✅ T17 |
 
-**Toàn bộ T1–T21 đã xong.** Còn lại đúng hai việc, đều ghi rõ bên dưới: bốn bài hát đều là giai điệu châu Âu (T10), và âm thanh chưa ai nghe thử trên trình duyệt.
+**Toàn bộ T1–T21 đã xong**, và âm thanh đã được nghe thử trên trình duyệt (2026-09-16) — rủi ro treo lâu nhất của dự án đã dứt. Còn lại ghi ở mục "Việc chưa kiểm chứng" cuối file.
 
 ## Chạy kiểm thử
 
@@ -321,12 +321,12 @@ Tổng cộng: **665 phép kiểm tra**, kiểm chứng bằng **269 phép phá 
 
 ## Việc chưa kiểm chứng
 
-### Âm thanh chưa ai nghe thử — rủi ro lớn nhất còn lại
-Ghi từ đầu backlog và **vẫn còn nguyên**. Trong khi đó đã có **năm** tính năng dựng lên trên nền này: động cơ ADSR (T7), máy gõ nhịp (T5), bộ phát câu nhạc (T6), hợp âm (T8), luyện tai (T12).
+### ~~Âm thanh chưa ai nghe thử~~ — ✅ ĐÃ NGHE (2026-09-16)
+Mục treo từ đầu backlog, nay đã dứt: đã nghe thử trên trình duyệt, **có tiếng và nghe ổn**. Đó là thứ bộ kiểm tra không với tới được — nó dựng một `AudioContext` giả nên chứng minh được **hình dạng đồ thị và lịch phát** (không gì nối thẳng vào loa, đường bao lên xuống đúng thứ tự, thời điểm lấy từ `AudioContext.currentTime`, không oscillator nào bị bỏ quên), nhưng không chứng minh nổi là có âm thanh phát ra.
 
-Bộ kiểm tra dựng một `AudioContext` giả và chứng minh được **hình dạng đồ thị và lịch phát**: không gì nối thẳng vào loa, đường bao lên xuống đúng thứ tự, thời điểm lấy từ `AudioContext.currentTime`, không oscillator nào bị bỏ quên. Nó **không** chứng minh được có tiếng kêu.
+Nhờ vậy năm tính năng dựng trên nền này đứng vững: động cơ ADSR (T7), máy gõ nhịp (T5), bộ phát câu nhạc (T6), hợp âm (T8), luyện tai (T12).
 
-Cần một người mở trang, bấm vài phím, bấm "Phát" — một phút là dứt điểm. Tôi không có công cụ điều khiển trình duyệt ở môi trường này.
+Lưu ý phạm vi: đây là **nghe thử một lượt**, không phải rà từng tính năng. Nếu mới chỉ bấm phím đàn thì máy gõ nhịp, nút "Phát", hợp âm và luyện tai vẫn đáng bấm thử mỗi thứ một lần — đặc biệt là hợp âm, vì đó là chỗ duy nhất có bốn nốt chồng lên nhau và là lý do T7 phải thêm limiter.
 
 ### Bài hát Việt Nam
 Xem phần "Còn thiếu" ở T10: **Lý Cây Xanh** và **Bắc Kim Thang** thuộc phạm vi công cộng và nên có mặt, nhưng tôi không đủ chắc về cao độ từng nốt, mà mã hoá sai giai điệu thì tệ hơn là thiếu bài.
