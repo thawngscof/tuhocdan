@@ -384,3 +384,8 @@ Xem phần "Còn thiếu" ở T10: **Lý Cây Xanh** và **Bắc Kim Thang** thu
 
 ### Giao diện chưa ai nhìn
 Cũng như âm thanh: bố cục, màu, khoảng cách của những thẻ mới thêm đều chỉ được kiểm bằng cách đọc markup. Riêng bàn phím trên màn hình hẹp thì có tính ra số (346px lọt màn 360px), còn lại thì chưa ai nhìn tận mắt.
+
+Giai đoạn 5 thêm bốn thẻ nữa chưa ai nhìn: **Tập Bấm**, **Ghép Hai Tay**, **Chơi Theo Kiểu Đàn Organ**, và khuông kép trong lúc tập. Khuông kép là chỗ đáng liếc nhất — bề rộng 1120px trong khung cuộn ngang, chưa rõ trên điện thoại đọc có nổi không.
+
+### Âm thanh của Giai đoạn 5 cũng chưa nghe
+Lần nghe thử 2026-09-16 diễn ra **trước** T24. Bốn tiếng đàn, ba điệu đệm và bộ trống dựng bằng oscillator đều chưa ai nghe. Trống là chỗ đáng ngờ nhất: dựng trống cái/trống con/hi-hat bằng oscillator thay vì noise buffer là một phép xấp xỉ, nghe có ra trống hay không thì chỉ tai mới biết. Bật điệu Ballad một lần là rõ.
