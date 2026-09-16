@@ -222,6 +222,30 @@
         </div>
       </div>
 
+
+      <!-- Practice with grading -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Tập Bấm — Có Chấm Đúng Sai</h2>
+            <p class="text-sm text-slate-500">Bấm theo bài trên đàn. Nốt đang chờ được tô xanh trên khuông và trên phím; bài chỉ chạy tiếp khi bấm đúng.</p>
+          </div>
+          <button onclick="stopPractice()"
+                  class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-all">Dừng tập</button>
+        </div>
+
+        <div id="practice-sources" class="flex flex-wrap gap-2 mb-4">
+          <!-- Source buttons generated in JS -->
+        </div>
+
+        <div id="practice-score" class="w-full overflow-x-auto bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-start items-center shadow-inner min-h-[190px] mb-3">
+          <!-- SVG injected in JS -->
+        </div>
+        <div id="practice-status" class="border border-slate-200 rounded-xl p-4 bg-slate-50/60 min-h-[64px]">
+          <!-- Status generated in JS -->
+        </div>
+      </div>
+
       <!-- Songs -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">

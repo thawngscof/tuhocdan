@@ -9,7 +9,7 @@
 const cp = require('child_process');
 const path = require('path');
 
-const SUITES = ["t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "t13", "t14", "t15", "t16", "t17", "t20"];
+const SUITES = ["t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "t13", "t14", "t15", "t16", "t17", "t20", "t22"];
 
 let total = 0, missed = 0;
 for (const suite of SUITES) {

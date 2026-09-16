@@ -319,6 +319,25 @@ Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên
 
 Tổng cộng: **665 phép kiểm tra**, kiểm chứng bằng **269 phép phá có chủ đích** trên 17 bộ, chạy bằng `node tools/break/all.js`.
 
+## Giai đoạn 5 — Từ tài liệu thành người dạy
+
+Ba mục này đến từ một câu hỏi thẳng: *trang đã đủ cho người tự học đàn organ tại nhà chưa?* Câu trả lời lúc đó là **chưa** — phần đọc nhạc thì vững, nhưng trang chỉ *trình bày*, không bao giờ *chấm*, và không có gì đặc thù organ.
+
+### T22 · Chấm bài người học bấm — ✅ XONG
+Lỗ hổng lớn nhất: `handleKeyClick` chỉ phát tiếng, **không bao giờ đối chiếu** với nốt đáng lẽ phải bấm. Người tự học không có thầy ngồi cạnh, nên không có cách nào biết mình đúng hay sai.
+
+`startPractice(items, { clef, timeSig })` rồi mọi phím bấm — chuột hay bàn phím máy tính — đều đi qua `gradeKeyPress(key)`. Nốt đang chờ tô xanh trên khuông và viền xanh trên phím. Đúng thì đi tiếp, **sai thì đứng yên**: được chỉ ra nốt nào cần bấm rồi tự tìm lấy mới là điều đáng học. Đếm đúng/sai, tính độ chính xác, ghi lại từng lỗi kèm nốt lẽ ra phải bấm.
+
+Hợp âm đòi **đủ mọi nốt, thứ tự nào cũng được** — nền sẵn cho T23. Dấu lặng bước qua chứ không đứng chờ một phím sẽ không bao giờ tới.
+
+**Cố ý không chấm theo nhịp.** Đúng trước, nhanh sau — chính là điều bài 10 dặn người học. Chơi đúng tốc độ là kỹ năng khác và cần một bài tập khác.
+
+Bảy nguồn để tập: câu tập đọc, gam hai tay, bốn bài hát. Mỗi nguồn mang theo **nhịp của chính nó**; áp cứng 4/4 lên mọi đoạn khiến khuông kêu ca về những ô nhịp vốn hoàn toàn đúng.
+
+Thêm 38 phép kiểm tra, kiểm chứng bằng 24 phép phá — bắt được cả 24. **Ba phép lọt lúc đầu**, và cả ba đều đáng:
+- Hai điều kiện trong `gradeKeyPress` hoá ra **chết hoàn toàn** — `practiceExpected()` đã chặn sẵn cả hai trường hợp. Đã xoá thay vì viết test cho chúng.
+- Không phép nào kiểm **việc nối dây**: động cơ chấm điểm chạy đúng nhưng chẳng ai kiểm nó có được gọi khi bấm phím thật hay không. Nay kiểm cả hai đường vào.
+
 ## Việc chưa kiểm chứng
 
 ### ~~Âm thanh chưa ai nghe thử~~ — ✅ ĐÃ NGHE (2026-09-16)

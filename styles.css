@@ -131,6 +131,15 @@ body {
 .beat-dot-accent.beat-dot-lit {
   background: #1d4ed8;
 }
+/* The key the practice exercise is waiting for. Distinct from .active, which
+   means "this key is sounding right now" - the two can be true at once. */
+.key-next {
+  box-shadow: inset 0 0 0 3px #2563eb, inset 0 -6px 8px rgba(0,0,0,0.08);
+}
+.black-key.key-next {
+  box-shadow: inset 0 0 0 3px #60a5fa, 2px 4px 8px rgba(0,0,0,0.4);
+}
+
 .key-finger {
   position: absolute;
   left: 50%;

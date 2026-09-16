@@ -48,9 +48,9 @@ global.window = {};
 const script = [null, SCRIPT];      // kept in this shape so script[1] still reads
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -3251,6 +3251,193 @@ check('the narrow keyboard trims its case as well as its keys',
 check('no black key carries a hard-coded pixel position any more',
       !/pos:\s*\d+/.test(SCRIPT),
       'the derived position and a stored one can drift apart');
+
+/* ---- 30. grading what the learner plays ----------------------------------
+ * The only part of the page that judges the learner rather than showing them
+ * something, so the checks are about the judging: that a right note counts,
+ * a wrong one counts against and does not move the passage on, and that the
+ * tally at the end is the truth.
+ */
+
+const SIMPLE = [{ key: 'c/4' }, { key: 'd/4' }, { key: 'e/4' }];
+
+check('practice starts on a passage', startPractice(SIMPLE, { clef: 'treble' }) === true);
+check('it waits for the first note',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['c/4']),
+      JSON.stringify(practiceExpected()));
+check('nothing is counted before a key is pressed',
+      practice.correct === 0 && practice.wrong === 0 && practiceAccuracy() === null);
+
+check('the right note is judged right', gradeKeyPress('c/4') === 'correct');
+check('the right note moves the passage on',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['d/4']));
+check('the right note is counted', practice.correct === 1 && practice.wrong === 0);
+
+check('a wrong note is judged wrong', gradeKeyPress('g/4') === 'wrong');
+check('a wrong note does NOT move the passage on',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['d/4']),
+      'the exercise skipped past the note the learner failed to play');
+check('a wrong note is counted against', practice.wrong === 1 && practice.correct === 1);
+check('a wrong note is remembered, with what was wanted',
+      practice.mistakes.length === 1
+        && practice.mistakes[0].got === 'g/4'
+        && JSON.stringify(practice.mistakes[0].expected) === JSON.stringify(['d/4']));
+
+check('accuracy is right notes over all notes tried',
+      Math.abs(practiceAccuracy() - 0.5) < 1e-9, String(practiceAccuracy()));
+
+gradeKeyPress('d/4');
+check('the last right note reports the passage as complete', gradeKeyPress('e/4') === 'complete');
+check('a finished passage has nothing left to wait for', practiceExpected() === null);
+check('pressing on after the end changes nothing',
+      gradeKeyPress('c/4') === null && practice.correct === 3 && practice.wrong === 1);
+
+/* 30a. rests are stepped over, not waited for */
+
+startPractice([{ key: 'c/4' }, { rest: true }, { key: 'd/4' }], { clef: 'treble' });
+gradeKeyPress('c/4');
+check('a rest is stepped over rather than waited for',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['d/4']),
+      'the exercise is waiting for a key that a rest will never produce');
+
+startPractice([{ rest: true }, { key: 'c/4' }], { clef: 'treble' });
+check('a passage starting on a rest waits for the first real note',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['c/4']));
+
+startPractice([{ key: 'c/4' }, { rest: true }], { clef: 'treble' });
+check('a passage ending on a rest finishes on the last real note',
+      gradeKeyPress('c/4') === 'complete');
+
+/* 30b. a chord needs all of its notes, in any order */
+
+startPractice([{ keys: ['c/3', 'e/3', 'g/3'] }, { key: 'c/3' }], { clef: 'bass' });
+check('a chord waits for all of its notes',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['c/3', 'e/3', 'g/3']));
+check('the first note of a chord is right but does not complete it',
+      gradeKeyPress('g/3') === 'correct' && practice.correct === 0,
+      `counted ${practice.correct} whole notes already`);
+check('the same note twice does not count as two notes of a chord',
+      gradeKeyPress('g/3') === 'wrong');
+gradeKeyPress('c/3');
+check('a chord is not finished until every note is down',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['c/3', 'e/3', 'g/3']));
+check('the last note of a chord completes it', gradeKeyPress('e/3') === 'correct');
+check('a completed chord counts as one', practice.correct === 1);
+check('a chord in any order is still the chord',
+      JSON.stringify(practiceExpected()) === JSON.stringify(['c/3']));
+
+/* 30c. what cannot be practised */
+
+let practiceLogged = 0;
+let practiceErr = console.error;
+console.error = () => practiceLogged++;
+const nothing = startPractice([]);
+console.error = practiceErr;
+check('an empty passage cannot be practised', nothing === false && practiceLogged === 1);
+
+practiceLogged = 0;
+practiceErr = console.error;
+console.error = () => practiceLogged++;
+const unplayable = startPractice([{ key: 'zz/9' }], { clef: 'treble' });
+console.error = practiceErr;
+check('a passage with a note the clef cannot show is refused',
+      unplayable === false && practiceLogged === 1);
+
+check('grading does nothing when nothing is being practised',
+      stopPractice() === true && gradeKeyPress('c/4') === null);
+
+/* 30c-bis. the grading is actually wired to the keys ----------------------
+ * The engine can be perfect and still never be consulted. Both ways of
+ * pressing a key have to reach it.
+ */
+
+startPractice(SIMPLE, { clef: 'treble' });
+handleKeyClick('c/4');
+check('a key pressed on screen is graded',
+      practice.correct === 1 && JSON.stringify(practiceExpected()) === JSON.stringify(['d/4']),
+      'the keyboard plays the note but nothing judges it');
+
+setTypingOctave(4);
+handleComputerKeyDown({ code: 'KeyS', repeat: false, target: { tagName: 'BODY' }, preventDefault() {} });
+check('a key played from the computer keyboard is graded too',
+      practice.correct === 2 && JSON.stringify(practiceExpected()) === JSON.stringify(['e/4']),
+      'typing plays the note but nothing judges it');
+
+handleKeyClick('g/4');
+check('a wrong key pressed on screen is counted against', practice.wrong === 1);
+stopPractice();
+
+/* 30d. every source the page offers can actually be practised */
+
+const sources = practiceSources();
+check(`the page offers something to practise (${sources.length} of them)`, sources.length >= 6);
+// Forcing one meter onto every passage would make the staff complain about
+// bars that are perfectly correct in the meter the passage is actually in.
+check('every source says what meter it is in',
+      sources.every(s => typeof s.timeSig === 'string' && /^\d+\/\d+$/.test(s.timeSig)),
+      sources.filter(s => !s.timeSig).map(s => s.label).join(', '));
+check('practising a source draws its bars without complaint',
+      (() => {
+        const said = [];
+        const realWarn = console.warn;
+        console.warn = (m) => said.push(m);
+        for (const s of sources) startPractice(s.items, { clef: s.clef, timeSig: s.timeSig });
+        console.warn = realWarn;
+        return said.length === 0;
+      })());
+check('every source has its own id', new Set(sources.map(s => s.id)).size === sources.length);
+
+const unplayableSources = [];
+for (const source of sources) {
+  const errs = [];
+  practiceErr = console.error;
+  console.error = (m) => errs.push(m);
+  const started = startPractice(source.items, { clef: source.clef, timeSig: source.timeSig, title: source.label });
+  console.error = practiceErr;
+  if (!started || errs.length) unplayableSources.push(`${source.label}: ${errs[0] || 'refused'}`);
+}
+check('every source is playable in the clef it declares', unplayableSources.length === 0,
+      unplayableSources.slice(0, 3).join('; '));
+
+check('a source can be started by id', startPracticeSource('demo') === true);
+practiceLogged = 0;
+practiceErr = console.error;
+console.error = () => practiceLogged++;
+const noSource = startPracticeSource('không-có');
+console.error = practiceErr;
+check('a source that does not exist is refused', noSource === false && practiceLogged === 1);
+
+/* 30e. a whole passage can be played through correctly */
+
+for (const source of sources) {
+  startPractice(source.items, { clef: source.clef });
+  let guard = 0, result = null;
+  while (practiceExpected() && guard++ < 500) {
+    for (const key of practiceExpected()) result = gradeKeyPress(key);
+  }
+  const playable = source.items.filter(it => !it.rest).length;
+  check(`${source.label}: playing every note right finishes it with no mistakes`,
+        result === 'complete' && practice.wrong === 0 && practice.correct === playable,
+        `${practice.correct} right, ${practice.wrong} wrong, for ${playable} playable item(s)`);
+}
+
+/* 30f. the learner is shown which note is wanted */
+
+startPractice(SIMPLE, { clef: 'treble' });
+const highlighted = (rendered['practice-score'].match(/stroke="#2563eb"|fill="#2563eb"/g) || []).length;
+check('the note being waited for is marked on the staff', highlighted >= 1,
+      'nothing on the staff says which note the exercise wants');
+check('only one note is marked at a time',
+      (rendered['practice-score'].match(/translate\([-\d.]+, [-\d.]+\) rotate/g) || []).length === 3
+        && highlighted <= 2);
+check('the status line names the note wanted',
+      /C4/.test(rendered['practice-status']), rendered['practice-status']);
+gradeKeyPress('g/4');
+check('the tally is shown to the learner',
+      /1 sai/.test(rendered['practice-status']), rendered['practice-status']);
+stopPractice();
+check('stopping clears what the learner was being shown',
+      practice.active === false && rendered['practice-score'] === '');
 
 /* ---- summary ----------------------------------------------------------- */
 

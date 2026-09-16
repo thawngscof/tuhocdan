@@ -452,12 +452,16 @@ function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, h
       const headY = yOfStep(steps[i]);
       const headX = shifted[i] ? noteX + (stemUp ? 11 : -11) : noteX;
       seen(headY);
+      // `item.highlight` colours the head without changing its shape, so the
+      // learner can see which note is being waited for without the notation
+      // itself saying something different.
+      const headInk = item.highlight ? '#2563eb' : '#0f172a';
       if (shape.hollow && !shape.stem) {
-        svg += `<ellipse cx="${headX}" cy="${headY}" rx="7" ry="4.8" fill="none" stroke="#0f172a" stroke-width="1.8"/>`;
+        svg += `<ellipse cx="${headX}" cy="${headY}" rx="7" ry="4.8" fill="none" stroke="${headInk}" stroke-width="1.8"/>`;
       } else {
         const fill = shape.hollow
-          ? `fill="none" stroke="#0f172a" stroke-width="1.6"`
-          : `fill="#0f172a"`;
+          ? `fill="none" stroke="${headInk}" stroke-width="1.6"`
+          : `fill="${headInk}"`;
         svg += `<g transform="translate(${headX}, ${headY}) rotate(-20)">
                     <ellipse cx="0" cy="0" rx="6" ry="4.5" ${fill} />
                   </g>`;
@@ -1770,6 +1774,207 @@ function handleComputerKeyDown(event) {
   return true;
 }
 
+/* ---- Grading what the learner plays --------------------------------------
+ * Everything else on this page demonstrates. This is the only part that
+ * watches the learner and says whether they got it right, which is the thing
+ * a person teaching themselves at home has no other way of finding out.
+ *
+ * It waits rather than races: the passage does not move on until the right
+ * key is pressed. Getting the notes right comes before getting them up to
+ * speed - which is what lesson 10 tells the learner in so many words - so
+ * nothing here is graded against the clock. Playing in tempo is a separate
+ * skill and would need a separate exercise.
+ */
+const practice = {
+  active: false,
+  items: [],
+  clef: 'treble',
+  timeSig: null,      // whatever the passage is written in, not an assumption
+  title: '',
+  index: 0,
+  pressed: [],        // keys of the current item already played, for chords
+  correct: 0,
+  wrong: 0,
+  mistakes: [],
+};
+
+// What the learner has to play at this point, or null once the passage is done.
+function practiceExpected() {
+  if (!practice.active) return null;
+  const item = practice.items[practice.index];
+  if (!item) return null;
+  return Array.isArray(item.keys) ? item.keys.slice() : [item.key];
+}
+
+// Rests are not played, so the cursor steps over them rather than waiting for
+// a key that is never going to come.
+function skipPracticeRests() {
+  while (practice.items[practice.index] && practice.items[practice.index].rest) practice.index++;
+}
+
+function startPractice(items, opts = {}) {
+  if (!Array.isArray(items) || items.length === 0) {
+    console.error('startPractice: there is nothing to practise.');
+    return false;
+  }
+  const clef = opts.clef || 'treble';
+  const missing = items.filter(it => !it.rest)
+    .flatMap(it => (Array.isArray(it.keys) ? it.keys : [it.key]))
+    .filter(key => !notesData[clef].some(n => n.key === key));
+  if (missing.length) {
+    console.error(`startPractice: ${missing.join(', ')} cannot be played in the "${clef}" clef.`);
+    return false;
+  }
+
+  practice.active = true;
+  practice.items = items;
+  practice.clef = clef;
+  practice.timeSig = opts.timeSig || null;
+  practice.title = opts.title || '';
+  practice.index = 0;
+  practice.pressed = [];
+  practice.correct = 0;
+  practice.wrong = 0;
+  practice.mistakes = [];
+  skipPracticeRests();
+  renderPractice();
+  return true;
+}
+
+function stopPractice() {
+  practice.active = false;
+  practice.pressed = [];
+  showNextKeys([]);
+  renderPractice();
+  return true;
+}
+
+const practiceFinished = () => practice.active && practice.index >= practice.items.length;
+
+function practiceAccuracy() {
+  const tried = practice.correct + practice.wrong;
+  return tried === 0 ? null : practice.correct / tried;
+}
+
+/* One key press, judged.
+ *
+ * Returns 'correct', 'wrong', 'complete' when that press finished the
+ * passage, or null when nothing is being practised. A wrong note is counted
+ * and the cursor stays put: being told which note was wanted, and being left
+ * to find it, is the whole point.
+ */
+function gradeKeyPress(key) {
+  // practiceExpected() is the single gate: it returns null when nothing is
+  // being practised and when the passage has been played out.
+  const expected = practiceExpected();
+  if (!expected) return null;
+
+  if (!expected.includes(key) || practice.pressed.includes(key)) {
+    practice.wrong++;
+    practice.mistakes.push({ index: practice.index, expected: expected.slice(), got: key });
+    renderPractice();
+    return 'wrong';
+  }
+
+  practice.pressed.push(key);
+  if (practice.pressed.length < expected.length) {     // a chord, still incomplete
+    renderPractice();
+    return 'correct';
+  }
+
+  practice.correct++;
+  practice.pressed = [];
+  practice.index++;
+  skipPracticeRests();
+
+  const done = practiceFinished();
+  renderPractice();
+  return done ? 'complete' : 'correct';
+}
+
+/* ---- what the learner sees ---- */
+
+function showNextKeys(keys) {
+  document.querySelectorAll('.white-key, .black-key').forEach(el => el.classList.remove('key-next'));
+  for (const key of keys) {
+    const el = document.getElementById(`key-${key.replace('/', '_')}`);
+    if (el) el.classList.add('key-next');
+  }
+}
+
+function renderPractice() {
+  const score = document.getElementById('practice-score');
+  const status = document.getElementById('practice-status');
+  if (!score || !status) return;
+
+  if (!practice.active) {
+    score.innerHTML = '';
+    status.innerHTML = '<p class="text-sm text-slate-500">Chọn một bài ở trên rồi bấm "Bắt đầu tập".</p>';
+    return;
+  }
+
+  // The note being waited for is marked on the staff, not moved or resized.
+  const shown = practice.items.map((item, i) =>
+    i === practice.index ? { ...item, highlight: true } : item);
+  renderScoreSVG('practice-score', shown, practice.clef, 1120, 190, practice.timeSig);
+
+  const expected = practiceExpected();
+  showNextKeys(expected || []);
+
+  const accuracy = practiceAccuracy();
+  const tally = `<span class="text-green-700 font-bold">${practice.correct} đúng</span>`
+    + ` · <span class="text-red-600 font-bold">${practice.wrong} sai</span>`
+    + (accuracy === null ? '' : ` · <span class="font-bold text-slate-700">${Math.round(accuracy * 100)}% chính xác</span>`);
+
+  if (practiceFinished()) {
+    const perfect = practice.wrong === 0;
+    status.innerHTML = `<p class="text-sm font-bold ${perfect ? 'text-green-700' : 'text-slate-700'} mb-1">`
+      + (perfect ? 'Xong cả bài, không sai nốt nào.' : 'Xong cả bài.')
+      + `</p><p class="text-sm">${tally}</p>`;
+    return;
+  }
+
+  const names = (expected || []).map(k => {
+    const note = notesData[practice.clef].find(n => n.key === k);
+    return note ? note.noteName : k;
+  });
+  status.innerHTML = `<p class="text-sm text-slate-700 mb-1">Nốt tiếp theo: `
+    + `<span class="font-bold text-blue-700">${names.join(' + ')}</span>`
+    + ` <span class="text-slate-400">(nốt ${practice.index + 1}/${practice.items.length})</span></p>`
+    + `<p class="text-sm">${tally}</p>`;
+}
+
+/* What can be practised: the reading exercise, the scale, and each song. */
+function practiceSources() {
+  return [
+    { id: 'demo', label: 'Câu tập đọc', items: DEMO_PHRASE, clef: 'treble', timeSig: '4/4' },
+    ...Object.keys(SCALES).map(hand => ({
+      id: `scale-${hand}`, label: `Gam Đô trưởng · ${SCALES[hand].label}`,
+      items: scalePassage(hand), clef: SCALES[hand].clef, timeSig: '4/4',
+    })),
+    ...SONGS.map(song => ({
+      id: `song-${song.id}`, label: song.title, items: song.notes, clef: song.clef, timeSig: song.timeSig,
+    })),
+  ];
+}
+
+function startPracticeSource(id) {
+  const source = practiceSources().find(s => s.id === id);
+  if (!source) {
+    console.error(`startPracticeSource: there is nothing called "${id}" to practise.`);
+    return false;
+  }
+  return startPractice(source.items, { clef: source.clef, timeSig: source.timeSig, title: source.label });
+}
+
+function buildPracticeSources() {
+  const row = document.getElementById('practice-sources');
+  if (!row) return;
+  row.innerHTML = practiceSources().map(s =>
+    `<button onclick="startPracticeSource('${s.id}')" class="chord-btn">${s.label}</button>`
+  ).join('');
+}
+
 /* ---- Ear training -----------------------------------------------------
  * Same shape as the note-reading game, but the question arrives through
  * the ears: hear a note and name it, or hear two notes and name the
@@ -2207,6 +2412,8 @@ function handleKeyClick(key) {
     playTone(match.freq, { voice: key });
     highlightKey(key);
   }
+  // Every press is judged, whether it came from the mouse or the keyboard.
+  gradeKeyPress(key);
 }
 
 // Key Highlight Animation
@@ -2416,6 +2623,8 @@ window.onload = function() {
   buildPianoKeyboard();
   buildBeatLights();
   buildIntervalButtons();
+  buildPracticeSources();
+  renderPractice();
   renderEarTraining();
   setTypingOctave(TYPING_OCTAVE.current);
   document.addEventListener('keydown', handleComputerKeyDown);
