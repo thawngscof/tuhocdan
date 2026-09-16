@@ -35,7 +35,7 @@ Mảng **trường độ** — vốn là chỗ trống lớn nhất khi viết b
 | Chơi bằng bàn phím máy tính, nhãn ARIA | ✅ T16 |
 | Dùng được trên điện thoại | ✅ T17 |
 
-**Toàn bộ T1–T24 đã xong**, và âm thanh đã được nghe thử trên trình duyệt (2026-09-16) — rủi ro treo lâu nhất của dự án đã dứt.
+**Toàn bộ T1–T25 đã xong**, và âm thanh đã được nghe thử trên trình duyệt (2026-09-16) — rủi ro treo lâu nhất của dự án đã dứt.
 
 Giai đoạn 5 (T22–T24) trả lời câu hỏi "trang đã đủ cho người tự học đàn organ tại nhà chưa?": nay trang **chấm được việc người học bấm**, có **khuông kép và bài hai tay**, và có **điệu đệm, chọn tiếng, bấm hợp âm một ngón** — tức phần đặc thù organ. Còn lại ghi ở mục "Việc chưa kiểm chứng" cuối file.
 
@@ -319,7 +319,7 @@ Bằng chứng là cần thiết: ngay khi đưa vào repo, **103 trên 269 muta
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **834 phép kiểm tra**, kiểm chứng bằng **347 phép phá có chủ đích** trên 20 bộ, chạy bằng `node tools/break/all.js`.
+Tổng cộng: **875 phép kiểm tra**, kiểm chứng bằng **365 phép phá có chủ đích** trên 21 bộ, chạy bằng `node tools/break/all.js`.
 
 ## Giai đoạn 5 — Từ tài liệu thành người dạy
 
@@ -370,6 +370,19 @@ Thêm 82 phép kiểm tra, kiểm chứng bằng 31 phép phá — bắt đượ
 - "Ô nhịp đầu không lập lịch vào quá khứ" — kiểm `nextBarTime` chẳng nói gì về ô nhịp **đã** đặt xuống. Nay soi thẳng thời điểm từng tiếng.
 - "Tắt chế độ một ngón" và "tắt điệu" hoá ra là **cùng một phép thử hai lần**, vì lúc đó điệu vốn đã tắt sẵn.
 
+### T25 · Khuông nhạc vừa màn hình iPad — ✅ XONG
+**Đổi mục tiêu: iPad, không còn điện thoại.** Bàn phím thu nhỏ cho vừa màn 360px ở T17 hoá ra **quá nhỏ để bấm** — phím 22px. Mà hai quãng tám phím đủ lớn để bấm đã rộng hơn một cái điện thoại, nên điện thoại không còn là đích nhắm.
+
+Số đo: iPad dọc 768px − 32 (padding trang) − 48 (padding thẻ) = **688px cho bàn phím**. 15 phím trắng × 44px + vỏ 20px = **680px, vừa khít**. Nên phím **giữ nguyên cỡ đầy đủ**, chỉ bớt padding của vỏ đàn. Bàn phím đủ 29 phím vẫn phải cuộn — đó chính là lý do có chế độ 2 quãng tám.
+
+**Khuông nhạc thì ngắt dòng chứ không thu nhỏ.** Bài 12 ô nhịp vẽ trên một khuông rộng 1120px, mà iPad dọc chỉ còn **664px** cho nó. Bản nhạc in gặp chuyện này thì xuống dòng, nên trang cũng làm vậy: `renderScoreSystems` ngắt **chỉ ở vạch nhịp**, số chỉ nhịp ghi một lần ở dòng đầu, còn khoá nhạc và vạch nhịp thì dòng nào cũng có. `renderScoreSVG` thêm tham số thứ tám `hideMeterNumerals` để dòng tiếp theo giữ được vạch nhịp mà không lặp lại số chỉ nhịp.
+
+Bề rộng suy từ `window.innerWidth`, chặn trên 1000px và chặn dưới 480px. Kết quả trên iPad dọc: mỗi dòng 664px, 12 ô, "Ánh Sao Nhỏ" thành 4 dòng; iPad ngang thì 920px, 17 ô, còn 3 dòng.
+
+Thêm 45 phép kiểm tra, kiểm chứng bằng 21 phép phá — bắt được cả 21. **Năm phép lọt lúc đầu:**
+- Ba phép kiểm tra **tự soi vào chính hằng số mà mutation đổi** — hỏi "khuông có vừa `SCORE_CHROME` không" trong khi `SCORE_CHROME` chính là thứ quyết định bề rộng khuông, tức hỏi cùng một con số hai lần. Nay đo lại từ markup (px-4, p-6, p-3) chứ không đọc hằng số của trang.
+- Hai phép đếm vạch nhịp bắt nhầm **vạch đầu và vạch kết**, vốn luôn có mặt dù khuông không hề chia ô nhịp. Nay chỉ đếm vạch bên trong.
+
 ## Việc chưa kiểm chứng
 
 ### ~~Âm thanh chưa ai nghe thử~~ — ✅ ĐÃ NGHE (2026-09-16)
@@ -383,9 +396,11 @@ Lưu ý phạm vi: đây là **nghe thử một lượt**, không phải rà t�
 Xem phần "Còn thiếu" ở T10: **Lý Cây Xanh** và **Bắc Kim Thang** thuộc phạm vi công cộng và nên có mặt, nhưng tôi không đủ chắc về cao độ từng nốt, mà mã hoá sai giai điệu thì tệ hơn là thiếu bài.
 
 ### Giao diện chưa ai nhìn
-Cũng như âm thanh: bố cục, màu, khoảng cách của những thẻ mới thêm đều chỉ được kiểm bằng cách đọc markup. Riêng bàn phím trên màn hình hẹp thì có tính ra số (346px lọt màn 360px), còn lại thì chưa ai nhìn tận mắt.
+Bố cục, màu, khoảng cách của các thẻ mới chỉ được kiểm bằng cách đọc markup. Phần **bề rộng** thì T25 đã tính ra số cho iPad (khuông 664px vừa khít 664px, bàn phím 680px vừa 688px), nhưng **số vừa không có nghĩa là nhìn dễ đọc** — cỡ nốt, độ dày dòng kẻ, khoảng cách giữa các dòng khuông vẫn chưa ai xem tận mắt.
 
-Giai đoạn 5 thêm bốn thẻ nữa chưa ai nhìn: **Tập Bấm**, **Ghép Hai Tay**, **Chơi Theo Kiểu Đàn Organ**, và khuông kép trong lúc tập. Khuông kép là chỗ đáng liếc nhất — bề rộng 1120px trong khung cuộn ngang, chưa rõ trên điện thoại đọc có nổi không.
+Bốn thẻ của Giai đoạn 5 chưa ai nhìn: **Tập Bấm**, **Ghép Hai Tay**, **Chơi Theo Kiểu Đàn Organ**, và khuông kép lúc tập. **Khuông kép là chỗ đáng liếc nhất**: nó không ngắt dòng như khuông đơn, nên cả 4 ô nhịp phải ép vào 664px trên iPad dọc — mỗi phách còn khoảng 33px.
+
+**Điện thoại không còn là đích nhắm** (quyết định ở T25), nên không cần kiểm.
 
 ### Âm thanh của Giai đoạn 5 cũng chưa nghe
 Lần nghe thử 2026-09-16 diễn ra **trước** T24. Bốn tiếng đàn, ba điệu đệm và bộ trống dựng bằng oscillator đều chưa ai nghe. Trống là chỗ đáng ngờ nhất: dựng trống cái/trống con/hi-hat bằng oscillator thay vì noise buffer là một phép xấp xỉ, nghe có ra trống hay không thì chỉ tai mới biết. Bật điệu Ballad một lần là rõ.

@@ -36,7 +36,7 @@ const MUTATIONS = [
   ['a key signature nobody defined is accepted',
    p => p.replace('  if (!sig) {\n    console.error(`keySignatureMarks: there is no key signature for "${keyName}".`);\n    return null;\n  }', '  if (!sig) { return []; }')],
   ['the signature drawn on top of the notes instead of before them',
-   p => p.replace('  const startX = (meter ? 92 : 65) + keyWidth;', '  const startX = meter ? 92 : 65;')],
+   p => p.replace('  const startX = (showMeterNumerals ? 92 : 65) + keyWidth;', '  const startX = showMeterNumerals ? 92 : 65;')],
   ['the time signature left sitting under the key signature',
    p => p.replace('svg += `<text x="${66 + keyWidth}" y="${yAtStep(6)}" ${sigAttrs}>${meter.top}</text>`;',
               'svg += `<text x="66" y="${yAtStep(6)}" ${sigAttrs}>${meter.top}</text>`;')],

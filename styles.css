@@ -19,15 +19,15 @@ body {
   --white-key-w: 44px;
   --black-key-w: 28px;
 }
-@media (max-width: 640px) {
-  /* Two octaves is 15 white keys. At 22px plus the case's 16px of padding
-     that comes to 346px, which fits a 360px phone without scrolling - the
-     point of the short keyboard in the first place. */
-  :root { --white-key-w: 22px; --black-key-w: 14px; }
-  .keyboard-wrapper { padding: 10px 8px 14px 8px; }
-  .white-key { height: 130px; padding-bottom: 8px; }
-  .black-key { height: 82px; }
-  .white-key .key-sub { display: none; }
+/* A tablet held upright is the smallest screen this page aims at. A phone is
+   not: two octaves of keys anyone can actually hit is already wider than one,
+   and keys shrunk to fit a phone came out too small to use.
+
+   So the keys keep their full width here and the case gives up some padding
+   instead. Two octaves then come to 15 x 44px + 20px = 680px, inside the
+   688px an iPad leaves after the page and card padding. */
+@media (max-width: 1024px) {
+  .keyboard-wrapper { padding: 10px 10px 14px 10px; }
 }
 .keyboard-wrapper {
   position: relative;

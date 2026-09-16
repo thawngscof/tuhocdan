@@ -45,7 +45,7 @@ const MUTATIONS = [
    p => p.replace('if (i > 0) barlineBefore.add(b.start);', 'barlineBefore.add(b.start);')],
 
   ['the meter shifts the notes even when absent',
-   p => p.replace('const startX = (meter ? 92 : 65) + keyWidth;', 'const startX = 92 + keyWidth;')],
+   p => p.replace('  const startX = (showMeterNumerals ? 92 : 65) + keyWidth;', '  const startX = 92 + keyWidth;')],
 ];
 
 const { missed } = run('T3 - time signatures and bars', MUTATIONS);

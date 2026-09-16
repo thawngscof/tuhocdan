@@ -48,9 +48,9 @@ global.window = {};
 const script = [null, SCRIPT];      // kept in this shape so script[1] still reads
 
 const page = new Function(
-  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece, VOICES, setVoice, STYLES, DRUMS, accompaniment, setStyle, setAccompanimentChord, scheduleAccompanimentBar, accompanimentScheduler, startAccompaniment, stopAccompaniment, scheduleDrum, lowerOctave, SINGLE_FINGER_CHORDS, setSingleFingerMode, singleFingerChord, handleSingleFinger, isLeftHandKey };'
+  script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece, VOICES, setVoice, STYLES, DRUMS, accompaniment, setStyle, setAccompanimentChord, scheduleAccompanimentBar, accompanimentScheduler, startAccompaniment, stopAccompaniment, scheduleDrum, lowerOctave, SINGLE_FINGER_CHORDS, setSingleFingerMode, singleFingerChord, handleSingleFinger, isLeftHandKey, renderScoreSystems, scoreSystems, barStartIndices, scoreSystemWidth, slotsPerSystem, SCORE_CHROME, SCORE_WIDTH, DEMO_PHRASE };'
 )();
-const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece, VOICES, setVoice, STYLES, DRUMS, accompaniment, setStyle, setAccompanimentChord, scheduleAccompanimentBar, accompanimentScheduler, startAccompaniment, stopAccompaniment, scheduleDrum, lowerOctave, SINGLE_FINGER_CHORDS, setSingleFingerMode, singleFingerChord, handleSingleFinger, isLeftHandKey } = page;
+const { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange, practice, practiceExpected, practiceAccuracy, startPractice, stopPractice, gradeKeyPress, practiceSources, startPracticeSource, renderPractice, handleKeyClick, renderGrandStaff, grandStaffGeometry, partBeats, TWO_HAND_PIECES, twoHandBass, twoHandPracticeItems, playTwoHands, showTwoHandPiece, VOICES, setVoice, STYLES, DRUMS, accompaniment, setStyle, setAccompanimentChord, scheduleAccompanimentBar, accompanimentScheduler, startAccompaniment, stopAccompaniment, scheduleDrum, lowerOctave, SINGLE_FINGER_CHORDS, setSingleFingerMode, singleFingerChord, handleSingleFinger, isLeftHandKey, renderScoreSystems, scoreSystems, barStartIndices, scoreSystemWidth, slotsPerSystem, SCORE_CHROME, SCORE_WIDTH, DEMO_PHRASE } = page;
 
 /* ---- harness ---------------------------------------------------------- */
 
@@ -862,6 +862,18 @@ const inkOf = (items, clef = 'treble') => {
   let b = 0;
   while (b < bare.length - a && bare[bare.length - 1 - b] === full[full.length - 1 - b]) b++;
   return full.slice(a, full.length - b);
+};
+
+// A passage broken across lines is drawn into child elements, so the
+// container holds only the wrappers. Join the lines back up to read it.
+const staffLines = (containerId) => {
+  const wrapper = rendered[containerId] || '';
+  if (wrapper.includes('<svg')) return wrapper;
+  // Only the lines this render actually declared: `rendered` keeps every id it
+  // has ever seen, so counting upwards until one is missing picks up leftovers
+  // from an earlier, longer passage.
+  const ids = [...wrapper.matchAll(new RegExp(`id="${containerId}-line-(\\d+)"`, 'g'))].map(m => m[1]);
+  return ids.map(i => rendered[`${containerId}-line-${i}`] || '').join('');
 };
 
 const FINGER_RE = /<text x="([-\d.]+)" y="([-\d.]+)"[^>]*fill="#7c3aed"[^>]*>(\d)<\/text>/;
@@ -3211,37 +3223,46 @@ check('a keyboard range that does not exist is refused', badRange === false && r
 check('a refused range leaves the keyboard alone', visibleKeyboardKeys().length === 25);
 setKeyboardRange('full');
 
-/* 29c. the width lives in one place, and shrinks on a narrow screen */
+/* 29c. the keyboard fits the smallest screen this page aims at -------------
+ * That screen is a tablet held upright, not a phone. Two octaves of keys big
+ * enough to hit is already wider than a phone, and keys shrunk to fit one
+ * came out too small to use, so a phone is out of scope and the arithmetic
+ * below is done against an iPad.
+ */
+
+const KEY_W = 44;              // --white-key-w, mirrored from the stylesheet
+const IPAD_PORTRAIT = 768;
+const PAGE_PADDING = 32;       // the page's px-4, both sides
+const CARD_PADDING = 48;       // each card's p-6, both sides
+const ROOM_FOR_KEYBOARD = IPAD_PORTRAIT - PAGE_PADDING - CARD_PADDING;
 
 check('the key width is declared as a custom property',
-      /--white-key-w:\s*44px/.test(html) && /--black-key-w:\s*28px/.test(html));
+      new RegExp(`--white-key-w:\\s*${KEY_W}px`).test(html) && /--black-key-w:\s*28px/.test(html),
+      'the stylesheet no longer declares the width the arithmetic here assumes');
 check('the keys are sized from that property, not from a repeated number',
       /\.white-key\s*\{[^}]*width:\s*var\(--white-key-w\)/.test(html)
         && /\.black-key\s*\{[^}]*width:\s*var\(--black-key-w\)/.test(html),
       'a key width is still hard-coded in the stylesheet');
 
-// Not tied to indentation: T19 moved this stylesheet into its own file and
-// reset its leading whitespace, which broke a version of this pattern that
-// expected four spaces.
-const narrow = /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\s*\}\s*\n/.exec(html);
-check('a narrow screen gets a narrower keyboard', Boolean(narrow));
-const narrowWidth = narrow && /--white-key-w:\s*(\d+)px/.exec(narrow[1]);
-check('the narrow key width is smaller than the full one',
-      narrowWidth && Number(narrowWidth[1]) < WHITE_W,
-      narrowWidth ? `${narrowWidth[1]}px` : 'no override found');
+const tablet = /@media \(max-width: 1024px\)\s*\{([\s\S]*?)\n\s*\}\s*\n/.exec(html);
+check('a tablet gets its own rules', Boolean(tablet));
+check('a tablet keeps the keys full size rather than shrinking them',
+      tablet && !/--white-key-w/.test(tablet[1]),
+      'the keys are being shrunk again - that is what was too small to use');
 
-// Two octaves at the narrow width has to fit a small phone, case included -
-// which is the whole reason the short keyboard exists. The first attempt at
-// 30px came to 450px and still scrolled.
-const narrowPx = Number(narrowWidth[1]);
-const narrowPad = /\.keyboard-wrapper\s*\{\s*padding:\s*\d+px (\d+)px/.exec(narrow[1]);
-const caseWidth = narrowPad ? Number(narrowPad[1]) * 2 : 32;
-check(`two octaves fit a 360px phone (15 x ${narrowPx}px + ${caseWidth}px case = ${15 * narrowPx + caseWidth}px)`,
-      15 * narrowPx + caseWidth <= 360, `${15 * narrowPx + caseWidth}px still scrolls sideways`);
-check(`the full keyboard does not (29 x ${narrowPx}px + ${caseWidth}px = ${29 * narrowPx + caseWidth}px), which is why the short one exists`,
-      29 * narrowPx + caseWidth > 360);
-check('the narrow keyboard trims its case as well as its keys',
-      Boolean(narrowPad), 'the padding is still the full-size 16px a side');
+const tabletPad = tablet && /\.keyboard-wrapper\s*\{\s*padding:\s*\d+px (\d+)px/.exec(tablet[1]);
+check('a tablet trims the case instead', Boolean(tabletPad),
+      'nothing gives way, so two octaves will not fit');
+
+const caseWidth = tabletPad ? Number(tabletPad[1]) * 2 : 32;
+const twoOctaveWidth = 15 * KEY_W + caseWidth;
+check(`two octaves fit an iPad held upright (15 x ${KEY_W}px + ${caseWidth}px case = ${twoOctaveWidth}px in ${ROOM_FOR_KEYBOARD}px)`,
+      twoOctaveWidth <= ROOM_FOR_KEYBOARD,
+      `${twoOctaveWidth}px still scrolls sideways on a ${IPAD_PORTRAIT}px screen`);
+check(`the full keyboard does not (29 x ${KEY_W}px + ${caseWidth}px = ${29 * KEY_W + caseWidth}px), which is why the short one exists`,
+      29 * KEY_W + caseWidth > ROOM_FOR_KEYBOARD);
+check('the keys stay big enough to hit',
+      KEY_W >= 36, `${KEY_W}px is narrower than a fingertip wants`);
 
 /* 29d. no pixel offsets left in the note data */
 
@@ -3424,12 +3445,14 @@ for (const source of sources) {
 /* 30f. the learner is shown which note is wanted */
 
 startPractice(SIMPLE, { clef: 'treble' });
-const highlighted = (rendered['practice-score'].match(/stroke="#2563eb"|fill="#2563eb"/g) || []).length;
+const practiceStaff = staffLines('practice-score');
+const highlighted = (practiceStaff.match(/stroke="#2563eb"|fill="#2563eb"/g) || []).length;
 check('the note being waited for is marked on the staff', highlighted >= 1,
       'nothing on the staff says which note the exercise wants');
 check('only one note is marked at a time',
-      (rendered['practice-score'].match(/translate\([-\d.]+, [-\d.]+\) rotate/g) || []).length === 3
-        && highlighted <= 2);
+      (practiceStaff.match(/translate\([-\d.]+, [-\d.]+\) rotate/g) || []).length === 3
+        && highlighted <= 2,
+      `${(practiceStaff.match(/translate\([-\d.]+, [-\d.]+\) rotate/g) || []).length} notehead(s), ${highlighted} marked`);
 check('the status line names the note wanted',
       /C4/.test(rendered['practice-status']), rendered['practice-status']);
 gradeKeyPress('g/4');
@@ -3622,7 +3645,7 @@ check('starting it sets both staves up',
 check('it waits for both hands at once',
       practiceExpected().length === 4, JSON.stringify(practiceExpected()));
 check('practising two hands draws a grand staff, not one staff',
-      /stroke-width="2\.5"/.test(rendered['practice-score']),
+      /stroke-width="2\.5"/.test(staffLines('practice-score')),
       'the practice view is showing a single staff for a two-hand piece');
 
 // Play the whole piece correctly, both hands, and it should finish clean.
@@ -3898,6 +3921,130 @@ stopAccompaniment();
 setSingleFingerMode(false);
 setVoice('organ');
 setStyle('ballad');
+
+/* ---- 33. a staff that fits the screen ------------------------------------
+ * A twelve-bar song on one staff is 1120px wide; an iPad held upright leaves
+ * about 664px for it. Printed music runs onto the next line rather than
+ * shrinking, and so does this. The screen this aims at is a tablet: a phone
+ * is out of scope, because keys small enough to fit one were too small to
+ * play.
+ */
+
+const IPAD = 768, IPAD_LANDSCAPE = 1024, DESKTOP = 1440;
+const widthAt = (viewport) => { global.window.innerWidth = viewport; return scoreSystemWidth(); };
+
+/* Measured from the markup, not read back out of the page's own constants:
+ * asking whether the staff fits in SCORE_CHROME when SCORE_CHROME is what
+ * decides the staff's width is asking the same number twice. */
+const PAGE_PX4 = 32;     // main.max-w-6xl.px-4, both sides
+const CARD_P6 = 48;      // each card's p-6, both sides
+const SCORE_P3 = 24;     // each score box's p-3, both sides
+const PAGE_MAX = 1152;   // max-w-6xl
+const roomAt = (viewport) => Math.min(viewport, PAGE_MAX) - PAGE_PX4 - CARD_P6 - SCORE_P3;
+
+check('a staff is sized from the screen, not from a fixed number',
+      widthAt(IPAD) < widthAt(IPAD_LANDSCAPE),
+      `${widthAt(IPAD)}px upright vs ${widthAt(IPAD_LANDSCAPE)}px on its side`);
+check(`a staff fits an iPad held upright (${widthAt(IPAD)}px in ${roomAt(IPAD)}px)`,
+      widthAt(IPAD) <= roomAt(IPAD),
+      `${widthAt(IPAD)}px will scroll inside ${roomAt(IPAD)}px`);
+check(`a staff fits an iPad on its side (${widthAt(IPAD_LANDSCAPE)}px in ${roomAt(IPAD_LANDSCAPE)}px)`,
+      widthAt(IPAD_LANDSCAPE) <= roomAt(IPAD_LANDSCAPE));
+check('a staff never grows past the page it sits on',
+      widthAt(DESKTOP) <= roomAt(DESKTOP),
+      `${widthAt(DESKTOP)}px on a ${DESKTOP}px screen, where the page allows ${roomAt(DESKTOP)}px`);
+check('a big screen stops the staff growing rather than letting it sprawl',
+      widthAt(DESKTOP) === SCORE_WIDTH.max,
+      `${widthAt(DESKTOP)}px, the cap says ${SCORE_WIDTH.max}px`);
+check('a staff never shrinks to phone size, since a phone is not the target',
+      widthAt(320) >= 420,
+      `a phone drove it to ${widthAt(320)}px`);
+global.window.innerWidth = IPAD;
+
+check('a wider screen holds more of the passage on one line',
+      slotsPerSystem(widthAt(IPAD)) < slotsPerSystem(widthAt(IPAD_LANDSCAPE)));
+check('every line leaves room to read the notes',
+      (() => {
+        const width = widthAt(IPAD);
+        const perLine = slotsPerSystem(width);
+        return (width - 130) / perLine >= 40;   // px per slot
+      })(),
+      'the notes are being packed tighter than they can be read at');
+
+/* 33a. lines break at bar lines, and nowhere else */
+
+const ipadSlots = slotsPerSystem(widthAt(IPAD));
+for (const song of SONGS) {
+  const bars = barStartIndices(song.notes, song.timeSig);
+  const systems = scoreSystems(song.notes, song.timeSig, ipadSlots);
+
+  check(`${song.title}: it runs onto more than one line on an iPad`, systems.length > 1,
+        `${systems.length} line(s) for ${song.notes.length} notes`);
+  check(`${song.title}: every line starts on a bar line`,
+        systems.every(sys => bars.starts.includes(sys.from)),
+        systems.map(s => s.from).join(', ') + ' vs bar starts ' + bars.starts.join(', '));
+  check(`${song.title}: the lines cover the song with no gap and no overlap`,
+        systems[0].from === 0
+          && systems[systems.length - 1].to === song.notes.length - 1
+          && systems.every((sys, i) => i === 0 || sys.from === systems[i - 1].to + 1),
+        systems.map(s => `${s.from}-${s.to}`).join(' '));
+  check(`${song.title}: no line is packed past what fits`,
+        systems.every(sys => (sys.to - sys.from + 1) <= ipadSlots || sys.to === sys.from),
+        systems.map(s => s.to - s.from + 1).join(', ') + ` against ${ipadSlots}`);
+  check(`${song.title}: the lines are filled rather than left half empty`,
+        systems.slice(0, -1).every(sys => (sys.to - sys.from + 1) > ipadSlots / 2),
+        systems.map(s => s.to - s.from + 1).join(', '));
+}
+
+check('a passage with no meter stays on one line, since it has no bars to break at',
+      scoreSystems([{ key: 'c/4' }, { key: 'd/4' }], null, 4).length === 1);
+check('a passage shorter than a line stays on one line',
+      scoreSystems(DEMO_PHRASE, '4/4', ipadSlots).length === 1);
+check('a single bar longer than a line gets a line to itself rather than being cut',
+      scoreSystems(Array.from({ length: 16 }, () => ({ key: 'c/4', dur: 'e' })), '4/4', 4).length === 2,
+      'two bars of eight quavers, four slots to a line');
+
+/* 33b. what gets drawn */
+
+renderScoreSystems('probe', SONGS[1].notes, 'treble', { timeSig: '4/4', width: 664 });
+const lineIds = [...(rendered.probe || '').matchAll(/id="probe-line-(\d+)"/g)].map(m => Number(m[1]));
+check('each line is drawn into its own element',
+      lineIds.length === scoreSystems(SONGS[1].notes, '4/4', slotsPerSystem(664)).length,
+      `${lineIds.length} element(s)`);
+check('the lines are numbered from zero, in order',
+      lineIds.every((n, i) => n === i), lineIds.join(', '));
+
+const firstLine = rendered['probe-line-0'] || '';
+const secondLine = rendered['probe-line-1'] || '';
+check('the meter is stated on the first line', /font-size="22" font-weight="800"/.test(firstLine));
+check('the meter is not repeated on the lines after it',
+      !/font-size="22" font-weight="800"/.test(secondLine),
+      'every line is restating the time signature');
+check('every line still carries its clef', /🎼/.test(firstLine) && /🎼/.test(secondLine));
+// Every staff has an opening rule and a closing bar whether or not it is
+// counting bars at all, so those two prove nothing. Count the ones inside.
+const interiorBarsIn = (line) => {
+  const width = Number((/<svg width="(\d+)"/.exec(line) || [])[1]);
+  return [...line.matchAll(/<line x1="([-\d.]+)" y1="50" x2="[-\d.]+" y2="90" stroke="#64748b" stroke-width="2"/g)]
+    .map(m => Number(m[1]))
+    .filter(x => Math.abs(x - 15) > 0.5 && Math.abs(x - (width - 15)) > 0.5 && Math.abs(x - (width - 21)) > 0.5);
+};
+check('every line still has its own bar lines, not just its end rules',
+      interiorBarsIn(secondLine).length >= 1 && interiorBarsIn(firstLine).length >= 1,
+      `first line ${interiorBarsIn(firstLine).length}, second line ${interiorBarsIn(secondLine).length} - a continuation line lost its bars along with its numerals`);
+check('no line is wider than it was told to be',
+      [firstLine, secondLine].every(l => /<svg width="664"/.test(l)));
+check('the lines between them hold the whole passage',
+      lineIds.map(i => (rendered[`probe-line-${i}`].match(/translate\([-\d.]+, [-\d.]+\) rotate/g) || []).length)
+        .reduce((a, b) => a + b, 0) === SONGS[1].notes.filter(n => !n.rest).length,
+      'notes went missing at a line break');
+
+let sysLogged = 0;
+const sysErr = console.error;
+console.error = () => sysLogged++;
+const noSystems = renderScoreSystems('probe', [], 'treble', { timeSig: '4/4' });
+console.error = sysErr;
+check('an empty passage is refused', noSystems === false && sysLogged === 1);
 
 /* ---- summary ----------------------------------------------------------- */
 

@@ -1,4 +1,6 @@
 /* Deliberate breakage: T17 - the keyboard on a small screen.
+ * The responsive stylesheet itself moved to T25 when the target changed from
+ * phones to tablets; what stays here is the keyboard's own layout.
  * Every mutation here must make `node tools/verify.js` fail. */
 const { run } = require('./harness.js');
 
@@ -23,12 +25,6 @@ const MUTATIONS = [
    p => p.replace('  if (!KEYBOARD_RANGES[range]) {\n    console.error(`setKeyboardRange: there is no keyboard range called "${range}".`);\n    return false;\n  }', '  if (!KEYBOARD_RANGES[range]) { return true; }')],
   ['the key width hard-coded in the stylesheet again',
    p => p.replace('.white-key {\n  width: var(--white-key-w);', '.white-key {\n  width: 44px;')],
-  ['the narrow-screen override removed',
-   p => p.replace(':root { --white-key-w: 22px; --black-key-w: 14px; }', ':root { --white-key-w: 44px; --black-key-w: 28px; }')],
-  ['the narrow keys left too wide to fit a phone',
-   p => p.replace(':root { --white-key-w: 22px; --black-key-w: 14px; }', ':root { --white-key-w: 34px; --black-key-w: 21px; }')],
-  ['the narrow keyboard keeping its full-size case',
-   p => p.replace('  .keyboard-wrapper { padding: 10px 8px 14px 8px; }\n', '')],
   ['pixel positions put back into the note data',
    p => p.replace('{ key: "c#/2", name: "Đô thăng", noteName: "C#2", type: "black", freq: 69.30 }',
               '{ key: "c#/2", name: "Đô thăng", noteName: "C#2", type: "black", freq: 69.30, pos: 28 }')],

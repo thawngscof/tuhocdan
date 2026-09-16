@@ -455,7 +455,7 @@ return { svg, minY, maxY };
 
 
 // Generalized SVG Pure Renderer Function
-function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null, keySig = null) {
+function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, height = 160, timeSig = null, keySig = null, opts = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -484,7 +484,10 @@ function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, h
   const keyMarks = keySig ? (keySignatureMarks(keySig, clef) || []) : [];
   const keyWidth = keyMarks.length * 9;
 
-  const startX = (meter ? 92 : 65) + keyWidth;
+  // A passage broken across several lines states its meter once, on the first
+  // line, the way printed music does - but every line still needs its bars.
+  const showMeterNumerals = Boolean(meter) && !opts.hideMeterNumerals;
+  const startX = (showMeterNumerals ? 92 : 65) + keyWidth;
   
   // Vertical extent actually drawn; the viewBox is fitted to it at the end so
   // notes far above/below the staff (C2, C6) stay visible instead of clipping.
@@ -516,7 +519,7 @@ function renderScoreSVG(containerId, notesArray, clef = 'treble', width = 360, h
 
   // The numerals stack up after the clef: the count centred between lines 3
   // and 5, the unit between lines 1 and 3.
-  if (meter) {
+  if (showMeterNumerals) {
     const sigAttrs = `font-family="Inter, sans-serif" font-size="22" font-weight="800" fill="${INK}" text-anchor="middle" dominant-baseline="central"`;
     svg += `<text x="${66 + keyWidth}" y="${yAtStep(6)}" ${sigAttrs}>${meter.top}</text>`;
     svg += `<text x="${66 + keyWidth}" y="${yAtStep(2)}" ${sigAttrs}>${meter.bottom}</text>`;
@@ -1805,6 +1808,91 @@ function handleComputerKeyDown(event) {
   return true;
 }
 
+/* ---- Breaking a passage across several lines ------------------------------
+ * A twelve-bar song drawn on one staff is 1120px wide. On an iPad held
+ * upright there are about 664px to put it in, so it either scrolls sideways
+ * or is squeezed until the noteheads are too small to read. Printed music
+ * solves this by running onto the next line, and so does this.
+ *
+ * Lines break at bar lines only, the meter is stated once on the first line,
+ * and every line keeps its clef and its bar lines.
+ */
+
+// Where each bar begins. Without a meter there are no bars to break at.
+function barStartIndices(items, timeSig) {
+  const sig = /^\s*(\d+)\s*\/\s*(\d+)\s*$/.exec(String(timeSig || ''));
+  if (!sig) return null;
+  const capacity = Number(sig[1]) * 4 / Number(sig[2]);
+  const starts = [];
+  let beats = 0;
+  items.forEach((item, i) => {
+    if (Math.abs(beats % capacity) < 1e-9) starts.push(i);
+    beats += itemBeats(item);
+  });
+  return { starts, capacity };
+}
+
+/* How wide a line can be. The page is max-w-6xl with px-4, each card adds p-6
+ * and each score box p-3: 104px of chrome around the staff. Phones are not a
+ * target - the keyboard alone is wider than one - so the floor is set where a
+ * small tablet sits, not where a phone does. */
+const SCORE_CHROME = 104;
+const SCORE_WIDTH = { min: 480, max: 1000, fallback: 680 };
+
+function scoreSystemWidth() {
+  const viewport = (typeof window !== 'undefined' && window.innerWidth) || 0;
+  if (!viewport) return SCORE_WIDTH.fallback;
+  return Math.max(SCORE_WIDTH.min, Math.min(SCORE_WIDTH.max, Math.min(viewport, 1152) - SCORE_CHROME));
+}
+
+// Roughly 46px a slot keeps a notehead and its accidental legible.
+const slotsPerSystem = (width) => Math.max(4, Math.round((width - 130) / 46));
+
+/* Split items into lines, breaking only at bar lines. A bar longer than a
+ * whole line gets a line of its own rather than being cut in half. */
+function scoreSystems(items, timeSig, maxSlots) {
+  const bars = barStartIndices(items, timeSig);
+  if (!bars || bars.starts.length <= 1) return [{ from: 0, to: items.length - 1 }];
+
+  const systems = [];
+  let current = null;
+  bars.starts.forEach((from, b) => {
+    const to = (b + 1 < bars.starts.length ? bars.starts[b + 1] : items.length) - 1;
+    const slots = to - from + 1;
+    if (current && current.slots + slots > maxSlots) {
+      systems.push(current);
+      current = null;
+    }
+    if (!current) current = { from, to, slots };
+    else { current.to = to; current.slots += slots; }
+  });
+  if (current) systems.push(current);
+  return systems;
+}
+
+function renderScoreSystems(containerId, items, clef, opts = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return false;
+  if (!Array.isArray(items) || items.length === 0) {
+    console.error(`renderScoreSystems: there is nothing to draw in "${containerId}".`);
+    return false;
+  }
+
+  const width = opts.width || scoreSystemWidth();
+  const height = opts.height || 190;
+  const systems = scoreSystems(items, opts.timeSig, opts.maxSlots || slotsPerSystem(width));
+
+  container.innerHTML = systems
+    .map((_, i) => `<div id="${containerId}-line-${i}" class="w-full flex justify-center"></div>`)
+    .join('');
+
+  systems.forEach((system, i) => {
+    renderScoreSVG(`${containerId}-line-${i}`, items.slice(system.from, system.to + 1), clef,
+      width, height, opts.timeSig, opts.keySig, { hideMeterNumerals: i > 0 });
+  });
+  return systems.length;
+}
+
 /* ---- Playing it like an organ, not like a piano ---------------------------
  * Everything above this point is keyboard music in general. This part is what
  * makes the instrument an organ: a choice of sound, an automatic
@@ -2276,7 +2364,7 @@ function showTwoHandPiece(pieceId) {
   }
   const bass = twoHandBass(piece);
   if (!bass) return false;
-  renderGrandStaff('twohand-score', { treble: piece.treble, bass }, 1000, 300, piece.timeSig);
+  renderGrandStaff('twohand-score', { treble: piece.treble, bass }, scoreSystemWidth(), 300, piece.timeSig);
   const caption = document.getElementById('twohand-origin');
   if (caption) caption.innerText = piece.origin;
   return true;
@@ -2444,11 +2532,11 @@ function renderPractice() {
     };
     renderGrandStaff('practice-score',
       { treble: mark(practice.parts.treble), bass: mark(practice.parts.bass) },
-      1120, 300, practice.timeSig);
+      scoreSystemWidth(), 300, practice.timeSig);
   } else {
     const shown = practice.items.map((item, i) =>
       i === practice.index ? { ...item, highlight: true } : item);
-    renderScoreSVG('practice-score', shown, practice.clef, 1120, 190, practice.timeSig);
+    renderScoreSystems('practice-score', shown, practice.clef, { timeSig: practice.timeSig });
   }
 
   const expected = practiceExpected();
@@ -2788,7 +2876,7 @@ function setSong(songId) {
 
 function showSong() {
   const song = currentSong;
-  renderScoreSVG('song-score', song.notes, song.clef, 1120, 190, song.timeSig);
+  renderScoreSystems('song-score', song.notes, song.clef, { timeSig: song.timeSig });
 
   const origin = document.getElementById('song-origin');
   if (origin) origin.innerText = song.simplified ? `${song.origin} · ${song.simplified}` : song.origin;
@@ -2880,7 +2968,7 @@ function setScaleHand(hand) {
 function showScale() {
   const scale = SCALES[scaleHand];
   const passage = scalePassage(scaleHand);
-  renderScoreSVG('scale-score', passage, scale.clef, 760, 180, '4/4');
+  renderScoreSystems('scale-score', passage, scale.clef, { timeSig: '4/4', height: 180 });
 
   const note = document.getElementById('scale-turn');
   if (note) note.innerText = `Đi lên: ${scale.turn.up}  ·  Đi xuống: ${scale.turn.down}`;
@@ -2922,7 +3010,7 @@ const DEMO_PHRASE = [
 ];
 
 function renderDemoPhrase() {
-  renderScoreSVG('demo-score', DEMO_PHRASE, 'treble', 520, 170, '4/4');
+  renderScoreSystems('demo-score', DEMO_PHRASE, 'treble', { timeSig: '4/4', height: 170 });
 }
 
 function toggleDemoPlayback() {
