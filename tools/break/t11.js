@@ -1,0 +1,50 @@
+/* Deliberate breakage: T11 - the lesson path.
+ * Every mutation here must make `node tools/verify.js` fail. */
+const { run } = require('./harness.js');
+
+const MUTATIONS = [
+  ['a lesson whose practice step calls a function that does not exist',
+   p => p.replace(`practice: { label: 'Bật máy gõ nhịp nhịp 4/4', action: 'startMetronome()' },`,
+              `practice: { label: 'Bật máy gõ nhịp nhịp 4/4', action: 'startMetronom()' },`)],
+  ['a quiz answer pointing past the options',
+   p => p.replace(`{ q: 'Nốt tròn ngân mấy phách?', options: ['2 phách', '4 phách', '1 phách'], answer: 1 },`,
+              `{ q: 'Nốt tròn ngân mấy phách?', options: ['2 phách', '4 phách', '1 phách'], answer: 5 },`)],
+  ['a question with only two options',
+   p => p.replace(`{ q: 'Vạch nhịp dùng để làm gì?', options: ['Chia các ô nhịp', 'Báo hết bài', 'Đánh dấu nốt cao'], answer: 0 },`,
+              `{ q: 'Vạch nhịp dùng để làm gì?', options: ['Chia các ô nhịp', 'Báo hết bài'], answer: 0 },`)],
+  ['two lessons swapped out of the order the backlog set',
+   p => p.replace("title: 'Dấu lặng',", "title: 'Hợp âm nâng cao',")],
+  ['a lesson left with a single paragraph of theory',
+   p => p.replace(`      'Dấu lặng là khoảng im lặng có tính thời gian. Mỗi hình nốt đều có dấu lặng tương ứng, ngân đúng bằng chừng ấy phách.',\n      'Lặng tròn treo dưới dòng thứ tư, lặng trắng nằm trên dòng thứ ba. Hai dấu này rất giống nhau, chỉ khác chỗ đặt — nhớ kỹ điểm đó.',\n`, '')],
+  ['a lesson id skipped',
+   p => p.replace('    id: 7,\n    title: \'Dấu lặng\',', '    id: 11,\n    title: \'Dấu lặng\',')],
+  ['progress saved but never read back',
+   p => p.replace('    const raw = window.localStorage && window.localStorage.getItem(LESSON_STORAGE_KEY);', '    const raw = null;')],
+  ['progress read but never written',
+   p => p.replace('    if (window.localStorage) window.localStorage.setItem(LESSON_STORAGE_KEY, JSON.stringify(lessonProgress));', '')],
+  ['lesson ids from storage trusted as they come',
+   p => p.replace('    const valid = ids.filter(id => LESSONS.some(l => l.id === id));', '    const valid = ids;')],
+  ['duplicate lesson ids kept on the way in',
+   p => p.replace('    return { done: [...new Set(valid)].sort((a, b) => a - b) };', '    return { done: valid.sort((a, b) => a - b) };')],
+  ['unreadable storage brings the page down instead of starting fresh',
+   p => p.replace('  } catch (e) {\n    console.error(\'loadProgress: saved progress could not be read - starting fresh.\', e);\n    return { done: [] };\n  }', '  } finally { }')],
+  ['a lesson can be marked done twice over',
+   p => p.replace('  if (!lessonProgress.done.includes(id)) {\n    lessonProgress.done.push(id);', '  if (true) {\n    lessonProgress.done.push(id);')],
+  ['any lesson number can be marked done',
+   p => p.replace('  if (!LESSONS.some(l => l.id === id)) {\n    console.error(`markLessonDone: there is no lesson ${id}.`);\n    return false;\n  }', '  if (false) { return false; }')],
+  ['resetting does not actually clear anything',
+   p => p.replace('  lessonProgress = { done: [] };\n  saveProgress();\n  openLesson = null;', '  openLesson = null;')],
+  ['a wrong answer still finishes the lesson',
+   p => p.replace('  if (score === lesson.quiz.length) {', '  if (true) {')],
+  ['a right answer is reported as wrong',
+   p => p.replace('  const correct = optionIndex === lesson.quiz[questionIndex].answer;', '  const correct = optionIndex !== lesson.quiz[questionIndex].answer;')],
+  ['a question index out of range is accepted',
+   p => p.replace('  if (!lesson || !lesson.quiz[questionIndex]) {\n    console.error(`answerLessonQuiz: lesson ${lessonId} has no question ${questionIndex}.`);\n    return false;\n  }', '  if (!lesson) { return false; }')],
+  ['opening a lesson that does not exist is accepted',
+   p => p.replace('  if (!LESSONS.some(l => l.id === id)) {\n    console.error(`openLessonCard: there is no lesson ${id}.`);\n    return false;\n  }', '  if (false) { return false; }')],
+  ['every right answer moved to the first option',
+   p => p.replace(/answer: [123] \}/g, 'answer: 0 }')],
+];
+
+const { missed } = run('T11 - the lesson path', MUTATIONS);
+process.exit(missed ? 1 : 0);

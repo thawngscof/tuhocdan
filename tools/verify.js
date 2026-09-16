@@ -16,8 +16,16 @@
 const fs = require('fs');
 const path = require('path');
 
-const PAGE = path.join(__dirname, '..', 'index.html');
-const html = fs.readFileSync(PAGE, 'utf8');
+/* T19 split the single file into three. The checks want two different things
+ * from it: the markup and stylesheet as TEXT, to be matched against the
+ * script's expectations, and the script itself to run. */
+const ROOT = path.join(__dirname, '..');
+const MARKUP = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const STYLES = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+const SCRIPT = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+
+// Everything that is not the script, for the checks that read the page as text.
+const html = MARKUP + '\n' + STYLES;
 
 /* ---- load the page script under a stub DOM ---------------------------- */
 
@@ -37,8 +45,7 @@ global.document = {
 };
 global.window = {};
 
-const script = html.match(/<script>\n([\s\S]*?)\n  <\/script>/);
-if (!script) fail('could not find the page <script> block in index.html');
+const script = [null, SCRIPT];      // kept in this shape so script[1] still reads
 
 const page = new Function(
   script[1] + '\n;return { renderScoreSVG, notesData, keyboardKeys, scrollKeyboardTo, DURATIONS, buildPianoKeyboard, setKeyFingering, clearKeyFingering, playTone, ENVELOPE, VOICE_PEAK, activeVoices, metronome, metronomeQueue, startMetronome, stopMetronome, setMetronomeBpm, setMetronomeBeatsPerBar, metronomeScheduler, metronomeBeatAt, METRONOME_BPM, player, sequenceSchedule, playSequence, pauseSequence, resumeSequence, stopSequence, setPlaybackBpm, playerTick, CHORDS, PROGRESSIONS, chordVoicing, playChord, playProgression, setChordInversion, raiseOctave, SCALES, scalePassage, setScaleHand, playScale, showScale, currentSongNow: () => currentSong, SONGS, songBarStarts, songPhrases, setSong, playSong, playSongPhrase, showSong, LESSONS, LESSON_STORAGE_KEY, loadProgress, saveProgress, markLessonDone, resetProgress, openLessonCard, answerLessonQuiz, renderLessonList, renderLessonDetail, itemBeats, intervalBetween, INTERVAL_STEPS, INTERVAL_ROOT, showInterval, EAR_MODES, EAR_POOL, earTraining, setEarMode, newEarQuestion, playEarQuestion, answerEar, renderEarTraining, KEY_SIGNATURES, keySignatureMarks, flatNameOf, FLAT_SPELLING, COMPUTER_KEYS, TYPING_OCTAVE, computerKeyToPianoKey, setTypingOctave, handleComputerKeyDown, KEYBOARD_RANGES, visibleKeyboardKeys, setKeyboardRange };'
@@ -68,14 +75,29 @@ const CLEFS = ['treble', 'bass'];
  * clicked it. These two halves are only joined by name, so check the names.
  */
 
-const markup = html.replace(/<script>[\s\S]*?<\/script>/g, '');
+check('the page loads its stylesheet and its script',
+      /<link[^>]+href="styles\.css"/.test(MARKUP) && /<script[^>]+src="app\.js"/.test(MARKUP),
+      'index.html no longer pulls in the files it was split into');
+check('no stylesheet or script is left inline in the page',
+      !/<style>/.test(MARKUP) && !/<script>\s*\n/.test(MARKUP),
+      'part of the split has crept back into index.html');
+
+const markup = MARKUP;
 const pageScript = script[1];
 
-// Ids written literally in the markup. Ones built in JS carry a ${...} and
-// belong to the keyboard, which section 5 already covers.
-const markupIds = new Set(
-  [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]).filter(id => !id.includes('${'))
-);
+// Ids the script can reach: the ones written into index.html, plus the ones
+// the script itself writes into innerHTML. Ids built from a ${...} are
+// generated per item and belong to the keyboard and the beat lights, which
+// have checks of their own.
+//
+// Until T19 these two sources were the same file, so an id the script created
+// counted as "in the markup" simply because the script was part of the page.
+// Splitting the file showed that up: lesson-result had never been in the
+// markup at all, and the check had been passing for the wrong reason.
+const literalIdsIn = (text) =>
+  [...text.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]).filter(id => !id.includes('${'));
+
+const markupIds = new Set([...literalIdsIn(MARKUP), ...literalIdsIn(SCRIPT)]);
 
 const declaredFns = new Set([...pageScript.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
 const BUILTINS = new Set(['Number', 'Boolean', 'String', 'parseInt', 'parseFloat']);
@@ -91,7 +113,9 @@ check(`every handler in the markup exists in the script (${calledFromMarkup.size
       undefinedHandlers.length === 0,
       'the markup calls: ' + undefinedHandlers.join(', '));
 
-const literalIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]).filter(id => !id.includes('${'));
+// Duplicates are only a fault within the page itself: the script may well
+// write an id that the page also declares, since it is replacing that element.
+const literalIds = literalIdsIn(MARKUP);
 const duplicateIds = [...new Set(literalIds.filter((id, i) => literalIds.indexOf(id) !== i))];
 check('no id is used twice', duplicateIds.length === 0, duplicateIds.join(', '));
 
@@ -3196,7 +3220,10 @@ check('the keys are sized from that property, not from a repeated number',
         && /\.black-key\s*\{[^}]*width:\s*var\(--black-key-w\)/.test(html),
       'a key width is still hard-coded in the stylesheet');
 
-const narrow = /@media \(max-width: 640px\) \{([\s\S]*?)\n    \}/.exec(html);
+// Not tied to indentation: T19 moved this stylesheet into its own file and
+// reset its leading whitespace, which broke a version of this pattern that
+// expected four spaces.
+const narrow = /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\s*\}\s*\n/.exec(html);
 check('a narrow screen gets a narrower keyboard', Boolean(narrow));
 const narrowWidth = narrow && /--white-key-w:\s*(\d+)px/.exec(narrow[1]);
 check('the narrow key width is smaller than the full one',
@@ -3218,8 +3245,11 @@ check('the narrow keyboard trims its case as well as its keys',
 
 /* 29d. no pixel offsets left in the note data */
 
+// The note data lives in app.js, which `html` deliberately does not include -
+// so this has to look at the script. It was reading the wrong text after the
+// T19 split and passing no matter what the data said.
 check('no black key carries a hard-coded pixel position any more',
-      !/pos:\s*\d+/.test(html),
+      !/pos:\s*\d+/.test(SCRIPT),
       'the derived position and a stored one can drift apart');
 
 /* ---- summary ----------------------------------------------------------- */

@@ -274,9 +274,27 @@ Thêm 26 phép kiểm tra, kiểm chứng bằng 14 phép phá — bắt đượ
 ### T18 · ~~Sửa email tác giả commit đầu~~ — KHÔNG LÀM
 `4ebdca2` mang email `thangwskof@...` của username cũ nên GitHub không gán commit đó về profile. Sửa được bằng `git commit --amend` + cherry-pick + force-push, nhưng đã quyết định bỏ: lợi ích chỉ là avatar của một commit, không đáng đánh đổi việc viết lại lịch sử. Ba commit sau đều đã đúng email.
 
-### T19 · Cân nhắc tách file
-`index.html` đang 159KB / 3181 dòng và sẽ phình nhanh khi thêm bài học.
-Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhiều file bình thường, vẫn không cần build step.
+### T19 · Tách file — ✅ XONG
+Ngưỡng ~150KB mà mục này tự đặt ra **đã bị vượt** (164KB trước khi tách), nên điều kiện kích hoạt. Đã tách làm ba:
+
+| File | Dòng | Kích thước |
+|---|---|---|
+| `index.html` | 591 | 32KB |
+| `styles.css` | 156 | 4KB |
+| `app.js` | 2432 | 114KB |
+
+Vẫn không có build step; GitHub Pages phục vụ ba file cũng như một.
+
+**Đã đối chiếu từng byte:** chụp lại cả 1486 lượt vẽ của renderer sau khi tách — giống hệt bản gốc. Việc bỏ thụt lề lúc tách đã lỡ cắt 4 khoảng trắng **bên trong hai template literal in thẳng ra SVG** (đầu nốt và ký hiệu khoá Fa); ảnh chụp bắt được và đã khôi phục. Các template sinh HTML còn lại thì khoảng trắng không có tác dụng gì nên để nguyên.
+
+**Việc tách còn lột ra một phép kiểm tra đỗ vì lý do sai.** Phép "mọi id script tra cứu đều có trong markup" trước đây đọc cả file, nên một id do *chính script* sinh ra (`lesson-result`) vẫn được tính là "có trong markup". Tách ra thì lộ: id đó chưa từng nằm trong markup. Nay phép kiểm tra phân biệt rõ id của trang và id do script tạo.
+
+### T21 · Đưa bộ phá có chủ đích vào repo — ✅ XONG
+Suốt các mục trên, bộ phá chỉ nằm ở thư mục tạm — tức thứ chống đỡ toàn bộ tiêu chuẩn chất lượng của dự án lại không được lưu giữ. Đúng lý do T20 đưa `verify.js` vào repo.
+
+Nay ở `tools/break/`: 17 bộ, một bộ chạy dùng chung (`harness.js`), và `all.js` chạy tất cả. Bộ chạy **tự dò mutation nhắm vào file nào** trong ba file nguồn, và báo `STALE` khi một mutation không còn khớp đoạn code nào.
+
+Bằng chứng là cần thiết: ngay khi đưa vào repo, **103 trên 269 mutation báo STALE** — tất cả vì chúng chép nguyên văn code kèm thụt lề cũ của HTML. Trước đó ba bộ đã âm thầm lỗi thời từ lúc nào không hay, và không gì báo cho biết.
 
 ### T20 · Đưa script kiểm thử vào repo — ✅ XONG
 `tools/verify.js`, chạy bằng `node tools/verify.js`, exit khác 0 khi có lỗi.
@@ -289,7 +307,7 @@ Nếu vượt ~150KB thì tách CSS/JS ra file riêng — Pages phục vụ nhi�
 
 Kiểm chứng bằng 5 phép phá — bắt được cả 5. Phép "đổi tên hàm nhưng bỏ quên cái nút" dừng ngay ở danh sách export với `ReferenceError` chỉ đúng tên hàm, chứ không phải ở một phép kiểm tra có tên; chấp nhận được vì nó tức thì và rõ ràng.
 
-Tổng cộng: **663 phép kiểm tra**, kiểm chứng bằng **269 phép phá có chủ đích** trên 17 bộ.
+Tổng cộng: **665 phép kiểm tra**, kiểm chứng bằng **269 phép phá có chủ đích** trên 17 bộ, chạy bằng `node tools/break/all.js`.
 
 ## Việc chưa kiểm chứng
 
